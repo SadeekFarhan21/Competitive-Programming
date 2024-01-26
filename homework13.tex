@@ -1,0 +1,128 @@
+\documentclass{article}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+
+% Define code listing style
+\lstdefinestyle{mystyle}{
+    basicstyle=\ttfamily,
+    numbers=left,
+    numberstyle=\small,
+    numbersep=5pt,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!40!black},
+    stringstyle=\color{red},
+    breaklines=true,
+    showstringspaces=false,
+    frame=lines,
+    captionpos=b
+}
+
+\lstset{style=mystyle}
+
+\begin{document}
+
+\title{Homework 13}
+\author{Farhan Sadeek}
+\date{\today}
+\maketitle
+
+\begin{enumerate}
+\item 
+\begin{verbatim}
+
+private static NaturalNumber productOfDigits1(NaturalNumber n) {
+    String num = n.toString();
+    NaturalNumber value = new NaturalNumber1L(1);
+    String charString;
+    for (char c : num.toCharArray()) {
+        if (FormatChecker.canParseInt((charString = String.valueOf(c))) {
+            value.multiply(new NaturalNumber1L(Integer.parseInt(charString)));
+        }
+    }
+    n.clear();
+    return value;
+}
+
+
+
+private static NaturalNumber productOfDigits2(NaturalNumber n) {
+    String num = n.toString();
+    NaturalNumber value = new NaturalNumber1L(1);
+    String charString;
+    for (char c : num.toCharArray()) {
+        if (FormatChecker.canParseInt((charString = String.valueOf(c))) {
+            value.multiply(new NaturalNumber1L(Integer.parseInt(charString)));
+        }
+    }
+    return value;
+}
+
+\end{verbatim}
+
+\item 
+\begin{verbatim}
+
+private static int toInt(NaturalNumber n) {
+    assert n.canConvertToInt() : "Violation of: n <= Integer.MAX_VALUE";
+    return n.toInt();
+}
+
+\end{verbatim}
+
+\item 
+\begin{verbatim}
+
+private static boolean findTag(XMLTree xml, String tag) {
+    if (xml.isTag() && xml.label().equals(tag)) {
+        return true;
+    }
+    for (int i = 0; i < xml.numberOfChildren(); i++) {
+        XMLTree child = xml.child(i);
+        if (findTag(child, tag)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+\end{verbatim}
+
+
+
+\item 
+\begin{enumerate}
+    \item Design by Contract: Design by Contract (DbC) is a software design approach that defines formal agreements (contracts) between different parts of a software system. These contracts specify the rights and obligations of each component, including preconditions and postconditions.
+    \item Precondition: A precondition is a condition or requirement that must be met before a particular operation or function is executed. If the precondition is not satisfied, the operation should not be performed.
+    \item Postcondition: A postcondition is a condition that specifies what should be true after a particular operation or function is executed. It describes the expected state or result of the operation.
+    \item Testing: Testing is the process of evaluating a software system to identify and fix defects or errors. It involves running the software with different inputs and scenarios to verify that it behaves as expected.
+    \item Debugging: Debugging is the process of identifying and removing errors or bugs from a software program. It typically involves examining the program's behavior, source code, and execution flow to pinpoint and fix issues.
+    \item Parameter Mode: Parameter mode refers to how parameters are passed to functions or methods. Common parameter modes include "in" (input), "out" (output), and "inout" (both input and output).
+    \item Clears: "Clears" is a term often used in Design by Contract to specify that an operation resets or clears a particular state or variable to a defined value or state.
+    \item Replaces: "Replaces" is used to specify that an operation replaces an existing value or state with a new value or state.
+    \item Restores: "Restores" indicates that an operation restores a specific value or state to its original or previous condition.
+    \item Updates: "Updates" is used to specify that an operation updates or modifies a particular value or state.
+    \item Immutable Type: An immutable type is a data type whose values cannot be changed after they are created. Any operation on an immutable type returns a new value rather than modifying the existing one.
+    \item Primitive Type: A primitive type is a basic data type provided by a programming language, such as integers, floating-point numbers, characters, or booleans.
+    \item Reference Type: A reference type is a data type that stores references or memory addresses to objects or data rather than the actual data itself. This includes objects, arrays, and other complex data structures.
+    \item Object: An object is an instance of a class or data structure that encapsulates both data and the methods that operate on that data. Objects are a fundamental concept in object-oriented programming.
+    \item Aliasing: Aliasing occurs when two or more variables or references point to the same object or memory location. Changes made through one alias affect the same underlying data, potentially leading to unexpected behavior.
+    \item Declared Type/Static Type: The declared type or static type of a variable is the type that is explicitly specified at the time of declaration and is known at compile time. It determines what operations can be performed on the variable.
+    \item Object Type/Dynamic Type: The object type or dynamic type of a variable is the actual type of the object it references during runtime. This can differ from the declared type, as it's determined based on the actual object assigned to the variable.
+    \item Implements: "Implements" is used in the context of interfaces in object-oriented programming. It signifies that a class provides the implementations for methods declared in an interface.
+    \item Extends: "Extends" is used to establish inheritance relationships in object-oriented programming, indicating that a subclass inherits attributes and behaviors from a superclass.
+    \item Method Overriding: Method overriding is a feature in object-oriented programming where a subclass provides a specific implementation of a method that is already defined in its superclass. This allows for polymorphism.
+    \item Subinterface/Derived Interface/Child Interface: These terms refer to an interface that inherits from another interface. It specifies that the subinterface includes the methods and properties of the parent interface and may add its own.
+    \item Superclass/Base Class/Parent Class: These terms refer to the class from which another class (subclass) inherits attributes and behaviors. The superclass is higher in the inheritance hierarchy.
+    \item Polymorphism: Polymorphism is a concept in object-oriented programming that allows objects of different classes to be treated as objects of a common superclass.
+    \item Recursion: Recursion is a programming technique in which a function calls itself in order to solve a problem. It is often used for tasks that can be broken down into smaller, similar subproblems.
+\end{enumerate}
+
+\item To solve that problem I will just create a new instance of the previous index and increase the new instance and put that back in. The reason that the issue pops up is because of something called reference type.
+
+\item The definition of extends is that a subclass must inherit all of the methods and fields of its superclass.NaturalNumber extends Standard. This means that NaturalNumber inherits all of the methods and fields of Standard. Therefore, we can argue that NaturalNumber extends Standard from the definition of extends.
+
+\item The definition of extends is that a subclass must inherit all of the methods and fields of its superclass. The definition of implements is that a class must provide implementations for all of the methods in an interface.C4 implements I2 and C3 implements I1. This means that C4 must provide implementations for all of the methods in I2 and C3 must provide implementations for all of the methods in I1. The definition of extends also tells us that C4 can inherit from a class that implements I2. In this case, C4 extends C3, which implements I1. Therefore, we can argue that C4 implements I2 and C3 implements I1 from the definitions of extends and implements.
+
+\end{enumerate}
+\end{document}

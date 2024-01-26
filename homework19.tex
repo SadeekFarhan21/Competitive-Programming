@@ -1,0 +1,58 @@
+\documentclass{article}
+
+\begin{document}
+
+\title{Homework 19}
+\author{Farhan Sadeek}
+\date{\today}
+
+\maketitle
+
+
+\begin{enumerate}
+    \item
+    \begin{verbatim}
+    public void flip() {
+        Stack<T> rev = new Stack1L<>();
+        int length = this.length();
+        for (int i = 0; i < length; i++) {
+            T element = this.pop();
+            rev.push(element);
+        }
+        this.transferFrom(rev);
+    }
+    \end{verbatim}
+
+    \item
+    \begin{verbatim}
+    public void flip() {
+        Sequence<T> rev = new Sequence1L<>();
+        int length = this.length();
+        for (int i = 0; i < length; i++) {
+            T element = this.pop();
+            rev.add(i, element);
+        }
+        this.transferFrom(rev);
+    }
+    \end{verbatim}
+
+    \item
+    \begin{verbatim}
+    public void flip() {
+        Sequence<T> rev = new Sequence1L<>();
+        int length = this.length();
+        this.flipHelper(rev, length);
+        this.transferFrom(rev);
+    }
+
+    public void flipHelper(Sequence<T> dest, int n) {
+        if (n < 0)
+            return;
+        T x = this.remove(n);
+        int index = dest.length();
+        dest.add(index, x);
+        flipHelper(dest, n - 1);
+    }
+    \end{verbatim}
+\end{enumerate}
+\end{document}
