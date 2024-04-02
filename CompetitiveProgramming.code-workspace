@@ -3,5 +3,19 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"files.associations": {
+			"algorithm": "cpp",
+			"iterator": "cpp",
+			"xhash": "cpp",
+			"xutility": "cpp",
+			"xstring": "cpp",
+			"iosfwd": "cpp",
+			"vector": "cpp",
+			"initializer_list": "cpp",
+			"list": "cpp",
+			"type_traits": "cpp"
+		}
+	}
 }
