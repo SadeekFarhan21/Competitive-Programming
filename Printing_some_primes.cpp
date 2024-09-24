@@ -1,25 +1,31 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    freopen("output.txt", "w", stdout);
-    int limit = 100000000;
-    vector<int> answer;
-    vector<bool> is_prime(limit + 1, true);
-    is_prime[0] = is_prime[1] = false;
+const int N = 100000001;
 
-    for (int i = 2; i <= limit; i++) {
-        if (is_prime[i]) {
-            answer.push_back(i);
-            for (int j = i * i; j <= limit; j += i) {
-                is_prime[j] = false;
-            }
+int spf[N];
+vector<int> primes;
+
+void sieve()
+{
+    for (int i = 2; i < N; i++)
+    {
+        if (spf[i] == 0)
+            spf[i] = i, primes.push_back(i);
+        int sz = primes.size();
+        for (int j = 0; j < sz && i * primes[j] < N && primes[j] <= spf[i]; j++)
+        {
+            spf[i * primes[j]] = primes[j];
         }
     }
+}
 
-    for (int i = 0; i < answer.size(); i += 100) {
-        cout << answer[i] << "\n";
-    }
-
+int32_t main()
+{
+    ios_base::sync_with_stdio(0);
+    cin.tie(0);
+    sieve();
+    for (int i = 0; i < primes.size(); i += 100)
+        cout << primes[i] << "\n";
     return 0;
 }

@@ -1,21 +1,13 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": "../DataFest-2024"
 		}
 	],
 	"settings": {
+		"java.debug.settings.onBuildFailureProceed": true,
 		"files.associations": {
-			"algorithm": "cpp",
-			"iterator": "cpp",
-			"xhash": "cpp",
-			"xutility": "cpp",
-			"xstring": "cpp",
-			"iosfwd": "cpp",
-			"vector": "cpp",
-			"initializer_list": "cpp",
-			"list": "cpp",
-			"type_traits": "cpp"
+			"iostream": "cpp"
 		}
 	}
 }
