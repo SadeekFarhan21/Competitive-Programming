@@ -1,0 +1,32 @@
+22:17:52 From Sean To Everyone:
+	so for each iteration of binary search we just use sliding window to find if each time works
+22:32:26 From Sean To Everyone:
+	how do we know when to use the partition algorithm
+22:32:54 From Sean To Everyone:
+	like based on the keywords of a problem
+22:33:13 From Sean To Everyone:
+	oh ok
+22:36:51 From Farhan Sadeek To Everyone:
+	(n + 1)/2 th term?
+22:37:30 From Farhan Sadeek To Everyone:
+	i meant that it has to be sorted first and then that
+22:38:31 From Sean To Everyone:
+	binary search for the highest median
+22:47:07 From Ryan Miao To Everyone:
+	increase median until it is equal to the element to the right of the median, then increase both until they are both equal to the second element to the right, and repeat until you run out of operations
+22:51:53 From Farhan Sadeek To Everyone:
+	Can you drop the link of the problem in the chat
+22:52:03 From Sean To Everyone:
+	binary search the minimum waiting time
+22:52:04 From Samuel Tong To Everyone:
+	https://codeforces.com/contest/1201/problem/C	https://usaco.org/index.php?page=viewproblem2&cpid=858
+22:52:08 From Farhan Sadeek To Everyone:
+	Ty
+22:56:38 From Farhan Sadeek To Samuel Tong(direct message):
+	I might need to leave now. Is it okay if I ask some questions after watching the recording on discord?
+22:57:18 From Samuel Tong To Farhan Sadeek(direct message):
+	ya for sure if you any questions feel free to ask the discord or dm me or ryan. our discords are inthe previous slideshow that was sent in the recap email
+22:58:23 From Farhan Sadeek To Samuel Tong(direct message):
+	Awesome! Thanks a lot!
+22:58:33 From Farhan Sadeek To Samuel Tong(direct message):
+	Reacted to "ya for sure if you a..." with 😀
