@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
-#define int long long int
+#define int long long
+
 vector<pair<int, int>> primeFactorization(int n)
 {
     vector<pair<int, int>> factors;
@@ -34,7 +35,7 @@ vector<pair<int, int>> primeFactorization(int n)
     return factors;
 }
 
-int divisor_sum(int n)
+int divisorSum(int n)
 {
     vector<pair<int, int>> factors = primeFactorization(n);
     int sum = 1;
@@ -52,50 +53,20 @@ int divisor_sum(int n)
     return sum;
 }
 
-int divisor_count(int n)
-{
-    vector<pair<int, int>> factors = primeFactorization(n);
-    int count = 1;
-    for (auto &factor : factors)
-    {
-        int e = factor.second;
-        count *= (e + 1);
-    }
-    return count;
-}
-
 void solve(int n)
 {
-    vector<pair<int, int>> factors = primeFactorization(n);
-    sort(factors.begin(), factors.end());
-    // Least Prime Factor
-    cout << factors[0].first << " ";
-    // Greatest Prime Factor
-    cout << factors[factors.size() - 1].first << " ";
-    // Distinct Prime Factors
-    cout << factors.size() << " ";
-    // Total Prime Factors
-    int total_prime = 0;
-    for (auto x : factors)
-    {
-        total_prime += x.second;
-    }
-    cout << total_prime << " ";
-    // Total Divisors
-    cout << divisor_count(n) << " ";
-    // Divisor Sum
-    cout << divisor_sum(n) << "\n";
+    int sum = divisorSum(n) - n;
+    cout << sum << "\n";
 }
 
 int32_t main()
 {
-    int n;
-    cin >> n;
-    for (int i = 0; i < n; i++)
+    int t;
+    cin >> t;
+    for (int i = 0; i < t; i++)
     {
-        int a;
-        cin >> a;
-        solve(a);
+        int n;
+        cin >> n;
+        solve(n);
     }
-    return 0;
 }

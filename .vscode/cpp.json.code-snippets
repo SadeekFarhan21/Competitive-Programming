@@ -15,23 +15,30 @@
 	// 	],
 	// 	"description": "Log output to console"
 	// }
-	"1": {
-		"prefix": "cpp",
+	"cpp": {
+		"prefix": "#include",
 		"body": [
 			"#include <bits/stdc++.h>",
 			"using namespace std;",
-			"#define int long long int",
+			"#define int long long",
+			"",
+			"void solve(){",
+			"    ",
+			"}",
 			"",
 			"int32_t main(){",
-			"    return 0;",
+			"    int t; cin >> t;",
+			"    for(int i = 0; i < t; i++){",
+			"        solve();",
+			"    }",
 			"}"
 		],
 		"description": ""
 	},
-	"2": {
+	"testcase": {
 		"prefix": "testcase",
 		"body": [
-			"int32_t main(){",
+			"int main(){",
 			"    int t; cin >> t;",
 			"    for(int i = 0; i < t; i++){",
 			"        solve();",
@@ -41,7 +48,7 @@
 		],
 		"description": ""
 	},
-	"3": {
+	"solve": {
 		"prefix": "solve",
 		"body": [
 			"void solve(){",
@@ -50,11 +57,141 @@
 		],
 		"description": ""
 	},
-	"4": {
+	"bits": {
 		"prefix": "bits",
 		"body": [
 			"#include <bits/stdc++.h>"
 		],
 		"description": ""
 	},
+	"dfs": {
+		"prefix": "dfs",
+		"body": [
+			"void dfs(int node, vector<vector<int>>& adj, vector<bool>& visited) {",
+			"    visited[node] = true;",
+			"    // Process node here if needed",
+			"    for (int neighbor : adj[node]) {",
+			"        if (!visited[neighbor]) {",
+			"            dfs(neighbor, adj, visited);",
+			"        }",
+			"    }",
+			"}"
+		],
+		"description": "Depth First Search (DFS)"
+	},
+	"bfs": {
+		"prefix": "bfs",
+		"body": [
+			"void bfs(int start, vector<vector<int>>& adj, vector<bool>& visited) {",
+			"    queue<int> q;",
+			"    q.push(start);",
+			"    visited[start] = true;",
+			"    while (!q.empty()) {",
+			"        int node = q.front();",
+			"        q.pop();",
+			"        // Process node here if needed",
+			"        for (int neighbor : adj[node]) {",
+			"            if (!visited[neighbor]) {",
+			"                q.push(neighbor);",
+			"                visited[neighbor] = true;",
+			"            }",
+			"        }",
+			"    }",
+			"}"
+		],
+		"description": "Breadth First Search (BFS)"
+	},
+	"dijkstra": {
+		"prefix": "dijkstra",
+		"body": [
+			"vector<int> dijkstra(int start, vector<vector<pair<int, int>>>& adj, int n) {",
+			"    vector<int> dist(n, INT_MAX);",
+			"    dist[start] = 0;",
+			"    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;",
+			"    pq.push({0, start});",
+			"    while (!pq.empty()) {",
+			"        int d = pq.top().first;",
+			"        int node = pq.top().second;",
+			"        pq.pop();",
+			"        if (d > dist[node]) continue;",
+			"        for (auto edge : adj[node]) {",
+			"            int weight = edge.first;",
+			"            int neighbor = edge.second;",
+			"            if (dist[node] + weight < dist[neighbor]) {",
+			"                dist[neighbor] = dist[node] + weight;",
+			"                pq.push({dist[neighbor], neighbor});",
+			"            }",
+			"        }",
+			"    }",
+			"    return dist;",
+			"}"
+		],
+		"description": "Dijkstra's Shortest Path Algorithm"
+	},
+	"prime_factorization": {
+		"prefix": "prime_factorization",
+		"body": [
+			"vector<pair<int, int>> primeFactorization(int n) {",
+			"    vector<pair<int, int>> factors;",
+			"",
+			"    int count = 0;",
+			"    while (n % 2 == 0) {",
+			"        count++;",
+			"        n /= 2;",
+			"    }",
+			"    if (count > 0)",
+			"        factors.push_back({2, count});",
+			"",
+			"    for (int i = 3; i * i <= n; i += 2) {",
+			"        count = 0;",
+			"        while (n % i == 0) {",
+			"            count++;",
+			"            n /= i;",
+			"        }",
+			"        if (count > 0)",
+			"            factors.push_back({i, count});",
+			"    }",
+			"",
+			"    if (n > 1) {",
+			"        factors.push_back({n, 1});",
+			"    }",
+			"",
+			"    return factors;",
+			"}"
+		],
+		"description": "Prime factorization of a number, returns factors and their exponents in a vector of pairs"
+	},
+	"divisor_sum": {
+		"prefix": "divisor_sum",
+		"body": [
+			"int divisorSum(int n) {",
+			"    vector<pair<int, int>> factors = primeFactorization(n);",
+			"    int sum = 1;",
+			"    for (auto& factor : factors) {",
+			"        int p = factor.first;",
+			"        int e = factor.second;",
+			"        int termSum = 0;",
+			"        for (int i = 0; i <= e; i++) {",
+			"            termSum += pow(p, i);",
+			"        }",
+			"        sum *= termSum;",
+			"    }",
+			"    return sum;",
+			"}"
+		]
+	},
+	"divisor_count": {
+		"prefix": "divisor_count",
+		"body": [
+			"int divisor_count(int n) {",
+			"    vector<pair<int, int>> factors = primeFactorization(n);",
+			"    int count = 1;",
+			"    for (auto& factor : factors) {",
+			"        int e = factor.second;",
+			"        count *= (e + 1);",
+			"    }",
+			"    return count;",
+			"}"
+		]
+	}
 }
