@@ -1,126 +1,205 @@
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <set>
+/*
+Farmer John is expanding his farm! He has identified the perfect location in the Red-Black Forest, which consists of N
+ trees (1≤N≤105
+) on a number line, with the i
+-th tree at position xi
+ (−109≤xi≤109
+).
 
-// Structure representing a Fenwick Tree (Binary Indexed Tree)
-struct FenwickTree {
-    int size;
-    std::vector<int> tree;
+Environmental protection laws restrict which trees Farmer John can cut down to make space for his farm. There are K
+ restrictions (1≤K≤105
+) specifying that there must always be at least ti
+ trees (1≤ti≤N
+) in the line segment [li,ri]
+, including the endpoints (−109≤li≤ri≤109
+). It is guaranteed that the Red-Black Forest initially satisfies these restrictions.
 
-    // Constructor to initialize Fenwick Tree with a given size
-    FenwickTree(int n) : size(n), tree(n + 1, 0) {}
+Farmer John wants to make his farm as big as possible. Please help him compute the maximum number of trees he can cut down while still satisfying all the restrictions!
 
-    // Update the tree at position 'index' by adding 'value'
-    void update(int index, int value) {
-        while (index <= size) {
-            tree[index] += value;
-            index += index & -index;
-        }
+INPUT FORMAT (input arrives from the terminal / stdin):
+Each input consists of T
+ (1≤T≤10
+) independent test cases. It is guaranteed that the sums of all N
+ and of all K
+ within an input each do not exceed 3⋅105
+.
+
+The first line of input contains T
+. Each test case is then formatted as follows:
+
+The first line contains integers N
+ and K
+.
+The next line contains the N
+ integers x1,…,xN
+.
+Each of the next K
+ lines contains three space-separated integers: li
+, ri
+ and ti
+.
+OUTPUT FORMAT (print output to the terminal / stdout):
+For each test case, output a single line with an integer denoting the maximum number of trees Farmer John can cut down.
+
+SAMPLE INPUT:
+3
+7 1
+8 4 10 1 2 6 7
+2 9 3
+7 2
+8 4 10 1 2 6 7
+2 9 3
+1 10 1
+7 2
+8 4 10 1 2 6 7
+2 9 3
+1 10 4
+SAMPLE OUTPUT:
+4
+4
+3
+For the first test case, Farmer John can cut down the first 4
+ trees, leaving trees at xi=2,6,7
+ to satisfy the restriction.
+
+For the second test case, the additional restriction does not affect which trees Farmer John can cut down, so he can cut down the same trees and satisfy both restrictions.
+
+For the third test case, Farmer John can only cut down at most 3
+ trees because there are initially 7
+ trees but the second restriction requires him to leave at least 4
+ trees uncut.
+
+SCORING:
+Input 2: N,K≤16
+Inputs 3-5: N,K≤1000
+Inputs 6-7: ti=1
+ for all i=1,…,K
+.
+Inputs 8-11: No additional constraints.
+
+Problem credits: Tina Wang, Jiahe Lu, Benjamin Qi
+*/
+
+#include <bits/stdc++.h>
+using namespace std;
+#define int long long int 
+
+void solve()
+{
+    int num_elements, num_intervals;
+    cin >> num_elements >> num_intervals;
+
+    vector<int> elements(num_elements);
+    for (auto &element : elements)
+    {
+        cin >> element;
+    }
+    sort(elements.begin(), elements.end());
+
+    vector<int> interval_left(num_intervals);
+    vector<int> interval_right(num_intervals);
+    vector<int> interval_required(num_intervals);
+    for (int i = 0; i < num_intervals; ++i)
+    {
+        cin >> interval_left[i] >> interval_right[i] >> interval_required[i];
     }
 
-    // Query the cumulative frequency up to position 'index'
-    int query(int index) const {
+    vector<int> interval_indices(num_intervals);
+    for (int i = 0; i < num_intervals; ++i)
+    {
+        interval_indices[i] = i;
+    }
+    sort(interval_indices.begin(), interval_indices.end(), [&](int a, int b)
+         {
+        if (interval_right[a] != interval_right[b])
+            return interval_right[a] < interval_right[b];
+        return interval_left[a] < interval_left[b]; });
+
+    vector<int> fenwick(num_elements + 1, 0);
+    set<int> not_chosen_elements;
+    for (int i = 1; i <= num_elements; ++i)
+    {
+        not_chosen_elements.insert(i);
+    }
+
+    auto update = [&](int index, int value) -> void
+    {
+        while (index <= num_elements)
+        {
+            fenwick[index] += value;
+            index += index & -index;
+        }
+    };
+
+    auto query = [&](int index) -> int
+    {
         int result = 0;
-        while (index > 0) {
-            result += tree[index];
+        while (index > 0)
+        {
+            result += fenwick[index];
             index -= index & -index;
         }
         return result;
-    }
+    };
 
-    // Query the cumulative frequency in the range [left, right]
-    int rangeQuery(int left, int right) const {
-        if (left > right) return 0;
+    auto range_query = [&](int left, int right) -> int
+    {
+        if (left > right)
+            return 0;
         return query(right) - query(left - 1);
-    }
-};
+    };
 
-// Structure representing an interval with left and right bounds and a requirement
-struct Interval {
-    long long left;
-    long long right;
-    int requiredTrees;
-};
+    for (int i : interval_indices)
+    {
+        int left = interval_left[i];
+        int right = interval_right[i];
+        int required = interval_required[i];
 
-// Function to process each test case
-void processTestCase() {
-    int numberOfTrees, numberOfIntervals;
-    std::cin >> numberOfTrees >> numberOfIntervals;
+        int start_index = lower_bound(elements.begin(), elements.end(), left) - elements.begin() + 1;
+        int end_index = upper_bound(elements.begin(), elements.end(), right) - elements.begin();
 
-    // Read tree positions
-    std::vector<long long> treePositions(numberOfTrees);
-    for (auto &position : treePositions) {
-        std::cin >> position;
-    }
-    std::sort(treePositions.begin(), treePositions.end());
+        if (start_index > end_index)
+            continue;
 
-    // Read intervals
-    std::vector<Interval> intervals(numberOfIntervals);
-    for (auto &interval : intervals) {
-        std::cin >> interval.left >> interval.right >> interval.requiredTrees;
-    }
+        int already_chosen = range_query(start_index, end_index);
+        int needed = required - already_chosen;
 
-    // Sort intervals based on the right bound, then left bound
-    std::sort(intervals.begin(), intervals.end(), [](const Interval &a, const Interval &b) {
-        if (a.right != b.right)
-            return a.right < b.right;
-        return a.left < b.left;
-    });
+        if (needed <= 0)
+            continue;
 
-    // Initialize Fenwick Tree and a set to keep track of not chosen trees
-    FenwickTree fenwick(numberOfTrees);
-    std::set<int> notChosenTrees;
-    for (int i = 1; i <= numberOfTrees; ++i) {
-        notChosenTrees.insert(i);
-    }
-
-    // Process each interval
-    for (const auto &interval : intervals) {
-        // Find the range of trees within the current interval
-        int startIndex = std::lower_bound(treePositions.begin(), treePositions.end(), interval.left) - treePositions.begin() + 1;
-        int endIndex = std::upper_bound(treePositions.begin(), treePositions.end(), interval.right) - treePositions.begin();
-
-        // If no trees fall within the interval, continue to the next interval
-        if (startIndex > endIndex) continue;
-
-        // Calculate the number of trees already chosen in this interval
-        int alreadyChosen = fenwick.rangeQuery(startIndex, endIndex);
-        int treesNeeded = interval.requiredTrees - alreadyChosen;
-
-        // If no additional trees are needed, continue to the next interval
-        if (treesNeeded <= 0) continue;
-
-        // Iterate from the end of the interval to choose trees
-        auto it = notChosenTrees.upper_bound(endIndex);
-        if (it != notChosenTrees.begin()) {
+        auto it = not_chosen_elements.upper_bound(end_index);
+        if (it != not_chosen_elements.begin())
+        {
             --it;
         }
 
-        while (treesNeeded > 0 && it != notChosenTrees.end() && *it >= startIndex) {
-            int treeIndex = *it;
-            fenwick.update(treeIndex, 1);
-            it = notChosenTrees.erase(it);
-            if (it != notChosenTrees.begin()) {
+        while (needed > 0 && it != not_chosen_elements.end() && *it >= start_index)
+        {
+            int element_index = *it;
+            update(element_index, 1);
+            it = not_chosen_elements.erase(it);
+            if (it != not_chosen_elements.begin())
+            {
                 --it;
             }
-            --treesNeeded;
+            --needed;
         }
     }
 
-    // Calculate the number of chosen trees and output the result
-    int totalChosen = fenwick.query(numberOfTrees);
-    std::cout << (numberOfTrees - totalChosen) << "\n";
+    int total_chosen = query(num_elements);
+    cout << (num_elements - total_chosen) << "\n";
 }
 
-int main() {
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
+int32_t main()
+{
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
 
-    int testCases;
-    std::cin >> testCases;
-    while (testCases--) {
-        processTestCase();
+    int t;
+    cin >> t;
+    for (int i = 0; i < t; i++)
+    {
+        solve();
     }
 
     return 0;
