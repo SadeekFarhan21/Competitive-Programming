@@ -1,10 +1,10 @@
-#include <bits/stdc++.h>
+#include "bits/stdc++.h"
 using namespace std;
 #define int long long
 
-vector<pair<int, int>> primeFactorization(int n)
+vector<int> primeFactorization(int n)
 {
-    vector<pair<int, int>> factors;
+    vector<int> factors;
 
     int count = 0;
     while (n % 2 == 0)
@@ -13,7 +13,7 @@ vector<pair<int, int>> primeFactorization(int n)
         n /= 2;
     }
     if (count > 0)
-        factors.push_back({2, count});
+        factors.push_back(2);
 
     for (int i = 3; i * i <= n; i += 2)
     {
@@ -24,12 +24,12 @@ vector<pair<int, int>> primeFactorization(int n)
             n /= i;
         }
         if (count > 0)
-            factors.push_back({i, count});
+            factors.push_back(i);
     }
 
     if (n > 1)
     {
-        factors.push_back({n, 1});
+        factors.push_back(n);
     }
 
     return factors;
@@ -39,24 +39,26 @@ void solve()
 {
     int a, b;
     cin >> a >> b;
-    vector<pair<int, int>> factors = primeFactorization(b);
-    int count = 0;
-    for (auto x : factors)
-    {
-        if (a % x.second == 0)
-        {
-            count++;
+    vector<int> factors_1 = primeFactorization(a);
+    vector<int> factors_2 = primeFactorization(b);
+    sort(factors_1.begin(), factors_1.end());
+    sort(factors_2.begin(), factors_2.end());
+    if(factors_1.size() != factors_2.size()){
+        cout << "No" << "\n";
+        return;
+    }
+    else {
+
+        for(int i = 0; i < factors_1.size(); i++){
+            if(factors_1[i] != factors_2[i]){
+                cout << "No" << "\n";
+                return;
+            }
         }
     }
-    if (factors.size() == count)
-    {
-        cout << "Yes" << "\n";
-    }
-    else
-    {
-        cout << "No" << "\n";
-    }
+    cout << "Yes" << "\n";
     return;
+    
 }
 
 int32_t main()
