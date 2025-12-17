@@ -10,7 +10,7 @@ void solve(){
         cin >> v[i].first >> v[i].second;
     }
     sort(v.rbegin(), v.rend(), [](const pair<int, int> &a, pair <int, int> &b){
-        if(a.first > b.first){
+        if(a.first != b.first){
             return a.first > b.first;
         }
         else if(a.first == b.first) {
