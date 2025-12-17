@@ -1,88 +1,43 @@
-import subprocess
+import datetime
+import random
 import os
 
-def run_git_command(command, check=True, capture_output=True):
-    """Executes a git command and handles output/errors."""
-    try:
-        result = subprocess.run(
-            command,
-            check=check,
-            capture_output=capture_output, # Use the provided argument
-            text=True,
-            shell=False 
-        )
-        
-        # Only try to strip/return output if it was captured
-        if capture_output and result.stdout is not None:
-            return result.stdout.strip()
-        return None # Return None if output was not captured
-        
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Error running Git command: {' '.join(command)}")
-        # Check if stderr was captured before trying to strip it
-        if e.stderr is not None:
-             print(f"Stderr: {e.stderr.strip()}")
-        if check:
-            exit(1)
-        return ""
-    except FileNotFoundError:
-        print("❌ Error: Git command not found. Make sure Git is installed and in your PATH.")
-        exit(1)
+# --- Configuration: TARGET GAP FOR NEW DATES ---
+# The existing commits will have their timestamps randomly set within this date range.
+GAP_START_DATE = datetime.datetime(2025, 3, 1)  # March 1st, 2025
+GAP_END_DATE = datetime.datetime(2025, 4, 30)    # April 30th, 2025
+# ------------------------------------------------
 
-def auto_commit_files():
-    """Resets staging, iterates through modified/untracked files, and commits them individually."""
+def adjust_timestamp(timestamp):
+    """
+    Shifts the timestamp to be a random time within the target gap.
+    The original timestamp is ignored, as we are scattering commits randomly.
+    """
     
-    print("🚀 Starting automated individual file commit process...")
-    print("---")
-
-    # 1. Unstage all current changes
-    print("🗑️ Resetting staging area (unstaging all files)...")
-    run_git_command(["git", "reset"])
-
-    # 2. Get the list of modified/added files (tracked files) AND untracked files
+    # Calculate a random time within the target gap
+    time_delta = GAP_END_DATE - GAP_START_DATE
     
-    # Tracked Files: Modified/Added since last commit
-    modified_and_added_output = run_git_command(["git", "diff", "--name-only"])
-    modified_files = modified_and_added_output.splitlines() if modified_and_added_output else []
-
-    # Untracked Files: New files not yet tracked by git
-    untracked_output = run_git_command(["git", "ls-files", "--others", "--exclude-standard"])
-    untracked_files = untracked_output.splitlines() if untracked_output else []
+    # Get a random number of seconds within the total duration of the gap
+    random_seconds = random.randint(0, int(time_delta.total_seconds()))
     
-    # Combine the lists and filter for actual existing files
-    all_files_to_commit = []
-    for f in modified_files + untracked_files:
-        if f and os.path.exists(f) and f not in all_files_to_commit: # Check for existence and duplicates
-            all_files_to_commit.append(f)
+    # Create the new datetime object
+    new_dt = GAP_START_DATE + datetime.timedelta(seconds=random_seconds)
+    
+    # Return the new timestamp (epoch time)
+    return int(new_dt.timestamp())
 
+# git-filter-repo passes environment variables for the commit date.
+# We modify these raw epoch timestamps before the commit is rewritten.
+if __name__ == '__main__':
+    # Get the raw timestamp and timezone from the environment
+    author_date_raw = os.environ.get('GIT_AUTHOR_DATE_RAW')
+    committer_date_raw = os.environ.get('GIT_COMMITTER_DATE_RAW')
 
-    if not all_files_to_commit:
-        print("✅ No modified or untracked files found to commit. Exiting.")
-        return
-
-    # 3. Process and Commit
-    for file_path in all_files_to_commit:
-        # Construct the commit message
-        file_name = os.path.basename(file_path)
-        commit_message = f"Upload {file_name}"
-
-        print("\n" + "-" * 50)
-        print(f"File: **{file_path}**")
+    # Process Author Date
+    if author_date_raw:
+        # e.g., '1701979200 +0000' -> timestamp='1701979200', timezone='+0000'
+        author_parts = author_date_raw.split()
+        author_timestamp = int(author_parts[0])
+        author_timezone = author_parts[1]
         
-        # Stage the file
-        # NOTE: git add is required for both modified (M) and untracked (??) files
-        print(f"✨ Staging {file_path}...")
-        run_git_command(["git", "add", file_path])
-        
-        # Commit the file
-        print(f"✍️ Committing with message: **{commit_message}**")
-        # We ensure capture_output=True here because we don't want commit output polluting the loop
-        run_git_command(["git", "commit", "-m", commit_message])
-
-    print("\n" + "-" * 50)
-    print("✅ Automated commit process complete.")
-    # Show final status, setting capture_output=False now works correctly
-    run_git_command(["git", "status"], capture_output=False) 
-
-if __name__ == "__main__":
-    auto_commit_files()
+        new_author_timestamp
