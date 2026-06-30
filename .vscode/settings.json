@@ -1,3 +1,34 @@
 {
-    "C_Cpp.errorSquiggles": "disabled"
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.productIconTheme": "material-product-icons",
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 100,
+  "editor.fontFamily": "Geist Mono",
+  "editor.fontSize": 14,
+  "editor.fontLigatures": true,
+  "editor.lineNumbers": "relative",
+  "editor.overtypeCursorStyle": "line",
+  "editor.accessibilitySupport": "off",
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.cursorStyleInactive": "line",
+  "editor.formatOnSave": true,
+
+  /* C / C++ Configuration */
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "code-runner.executorMap": {
+    "cpp": "cd $dir && g++-15 -std=c++17 $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
+  },
+  "code-runner.runInTerminal": true,
+  "code-runner.saveFileBeforeRun": true,
+
+  /* LaTeX */
+  "[latex]": {
+    "editor.defaultFormatter": "James-Yu.latex-workshop"
+  },
+  "latex-workshop.formatting.latex": "latexindent",
+  "latex-workshop.bibtex-format.tab": "4 spaces",
+  "workbench.colorTheme": "GitHub Dark",
+  "editor.codeActionsOnSave": {}
 }

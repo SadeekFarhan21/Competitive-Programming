@@ -1,14 +1,15 @@
-#include <bits/stdc++.h>
+#include "bits/stdc++.h"
 using namespace std;
 #define int long long
+#define double long double
 int32_t main()
 {
-    int r, n;
-    cin >> r >> n;
-    n += 1;
-    n /= 2;
-    int a = 1;
-    int answer = a * (pow(r * r, n) - 1) / (pow(r, 2) - 1) - 1;
-    cout << answer << "\n";
+    int x, n; cin >> x >> n;
+    int sum = 0;
+    for(int i = 0; i <= n; i += 2){
+        sum += pow(x, i);
+    }
+    sum -= 1;
+    cout << sum << '\n';
     return 0;
 }
