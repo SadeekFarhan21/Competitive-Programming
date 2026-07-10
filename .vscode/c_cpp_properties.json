@@ -1,6 +1,22 @@
 {
     "configurations": [
         {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/homebrew/Cellar/gcc/15.2.0_1/include/c++/15",
+                "/opt/homebrew/Cellar/gcc/15.2.0_1/include/c++/15/aarch64-apple-darwin24",
+                "/opt/homebrew/Cellar/gcc/15.2.0_1/include/c++/15/backward"
+            ],
+            "compilerPath": "/opt/homebrew/bin/g++-15",
+            "compilerArgs": [
+                "-std=c++17"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-gcc-arm64"
+        },
+        {
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**"

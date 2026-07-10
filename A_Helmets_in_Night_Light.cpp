@@ -10,7 +10,7 @@ void solve()
     vector<int> b(n);
     map<int, int> m;
     int count = 0, total = 0;
-    vector<int> v(n);
+    vector<pair<int, int>> v(n);
     for (int i = 0; i < n; i++)
     {
         cin >> a[i];
@@ -26,10 +26,10 @@ void solve()
     sort(v.begin(), v.end());
     
 
-    // We would go till we have 
+    // We would go till we have
     for (int i = 0; i < n; i++)
     {
-        v[i]
+        // TODO: use v[i].first / v[i].second
     }
 }
 
