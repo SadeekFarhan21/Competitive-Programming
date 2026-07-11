@@ -3,7 +3,7 @@
   "workbench.productIconTheme": "material-product-icons",
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 100,
-  "editor.fontFamily": "Geist Mono",
+  "editor.fontFamily": "Fragment Mono, Menlo, Monaco, 'Courier New', monospace",
   "editor.fontSize": 14,
   "editor.fontLigatures": true,
   "editor.lineNumbers": "relative",
@@ -11,6 +11,10 @@
   "editor.accessibilitySupport": "off",
   "terminal.integrated.cursorStyle": "line",
   "terminal.integrated.cursorStyleInactive": "line",
+  "terminal.integrated.fontFamily": "Fragment Mono, Menlo, Monaco, 'Courier New', monospace",
+  "terminal.integrated.fontSize": 14,
+  "debug.console.fontFamily": "Fragment Mono, Menlo, Monaco, 'Courier New', monospace",
+  "editor.inlineSuggest.fontFamily": "Fragment Mono, Menlo, Monaco, 'Courier New', monospace",
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "editor.formatOnType": true,
@@ -26,17 +30,21 @@
   "C_Cpp.inlayHints.referenceOperator.enabled": false,
   "editor.parameterHints.enabled": false,
   "code-runner.executorMap": {
-    "cpp": "cd $dir && g++-15 -std=c++17 $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
+    "cpp": "cd $dir && /opt/homebrew/opt/gcc/bin/g++-16 -std=c++17 $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
   },
   "code-runner.runInTerminal": true,
   "code-runner.saveFileBeforeRun": true,
 
   /* CPH: use Homebrew GCC (Apple Clang lacks <bits/stdc++.h>) */
-  "cph.language.cpp.Command": "/opt/homebrew/bin/g++-15",
+  "cph.language.cpp.Command": "/opt/homebrew/opt/gcc/bin/g++-16",
+  "cph.language.cpp.command": "/opt/homebrew/opt/gcc/bin/g++-16",
   "cph.language.cpp.Args": "-O2 -std=c++17 -Wall -DCPH",
+  "cph.language.cpp.args": "-O2 -std=c++17 -Wall -DCPH",
+  "cph.language.cpp.OutputArg": "-o",
+  "cph.language.cpp.outputArg": "-o",
 
   /* CPH-NG: use Homebrew GCC (Apple Clang lacks <bits/stdc++.h>) */
-  "cph-ng.languages.cppCompiler": "/opt/homebrew/bin/g++-15",
+  "cph-ng.languages.cppCompiler": "/opt/homebrew/opt/gcc/bin/g++-16",
   "cph-ng.languages.cppCompilerArgs": "-O2 -std=c++17 -Wall -DCPH",
 
   /* LaTeX */

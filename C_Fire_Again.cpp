@@ -4,6 +4,8 @@ using namespace std;
 #define double long double
 
 void solve() {
+    // freopen("input.txt", "r", stdin);
+    // freopen("output.txt", "w", stdout);
     int m, n;
     cin >> m >> n;
     vector<vector<int>> distance(m + 1, vector<int>(n + 1));
@@ -21,7 +23,6 @@ void solve() {
         q.push({x, y});
         distance[x][y] = 0;
     }
-    int size = q.size();
     vector<int> dx = {1, -1, 0, 0};
     vector<int> dy = {0, 0, 1, -1};
     while (!q.empty()) {
