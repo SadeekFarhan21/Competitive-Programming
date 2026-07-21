@@ -1,24 +1,30 @@
 #include "bits/stdc++.h"
 using namespace std;
-#define int long long
-#define double long double
 
-int32_t main(){
-    int n; cin >> n;
-    vector <int> v(n);
-    for(int i = 0; i < n; i++){
+int32_t main() {
+    int n;
+    cin >> n;
+    vector<int> v(n);
+    int sum = 0;
+    for (int i = 0; i < n; i++) {
         cin >> v[i];
+        sum += v[i];
     }
-    int dp[n + 1][n + 1];
-    for(int i = 0; i <= n; i++){
-        dp[i][0] = 0;
+
+    vector<vector<bool>> dp(n, vector<bool>(sum + 1, false));
+    for (int i = 0; i <= n; i++) {
+        dp[i][0] = true;
     }
-    for(int i = 0; i <= n; i++){
-        dp[0][i] = 0;
+    // each individual item to be true
+    for (int i = 0; i < n; i++) {
+        dp[i][v[i]] = true;
     }
-    for(int i = 1; i <= n; i++){
-        for(int j = 1; j <= n; j++){
-            
+    for (int i = 1; i <= sum; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i - v[j] >= 0) {
+                dp[j][i] = dp[j - 1][i] + dp[j][v[i]];
+            }
         }
     }
+    return 0;
 }
