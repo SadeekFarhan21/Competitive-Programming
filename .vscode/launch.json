@@ -68,7 +68,7 @@
             "cppAttachName": "'(Windows) Attach' or '(gdb) Attach'"
         },
         {
-            "name": "C/C++: g++-16 build and debug active file",
+            "name": "C/C++: g++-15 build and debug active file",
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}",
@@ -90,7 +90,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "C/C++: g++-16 build active file"
+            "preLaunchTask": "C/C++: g++-15 build active file"
         }
     ]
 }
