@@ -6,7 +6,7 @@
             "command": "/opt/homebrew/opt/gcc/bin/g++-15",
             "args": [
                 "-fdiagnostics-color=always",
-                "-std=c++17",
+                "-std=c++23",
                 "-g",
                 "${file}",
                 "-o",

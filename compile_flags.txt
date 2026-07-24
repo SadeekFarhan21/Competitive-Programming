@@ -1,4 +1,4 @@
--std=c++17
+-std=c++23
 -nostdinc++
 -isystem/opt/homebrew/opt/gcc/include/c++/15
 -isystem/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24
