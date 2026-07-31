@@ -2,35 +2,14 @@
     "configurations": [
         {
             "name": "Mac",
-            "includePath": [
-                "${workspaceFolder}/**",
-                "/opt/homebrew/opt/gcc/include/c++/15",
-                "/opt/homebrew/opt/gcc/include/c++/15/aarch64-apple-darwin24",
-                "/opt/homebrew/opt/gcc/include/c++/15/backward"
-            ],
             "compilerPath": "/opt/homebrew/opt/gcc/bin/g++-15",
             "compilerArgs": [
-                "-std=c++17"
+                "-std=c++23"
             ],
             "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "macos-gcc-arm64"
-        },
-        {
-            "name": "Win32",
-            "includePath": [
-                "${workspaceFolder}/**"
-            ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
-            "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "cl.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64"
+            "cppStandard": "c++23",
+            "intelliSenseMode": "macos-gcc-arm64",
+            "includePath": ["${workspaceFolder}/**"]
         }
     ],
     "version": 4

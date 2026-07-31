@@ -1,26 +1,27 @@
 #include <bits/stdc++.h>
 using namespace std;
-#define int long long int
-int32_t main()
-{
-    int l, n;
-    cin >> l >> n;
-    set<int> s;
-    s.insert(0);
-    s.insert(l);
-    multiset<int> ms;
-    for (int i = 0; i < n; i++)
-    {
-        int a;
-        cin >> a;
-        s.insert(a);
-        auto lower = s.lower_bound(a);
-        auto upper = s.upper_bound(a);
-        int distance1 = *upper - *lower;
-        // cout << *lower << " " << *upper << "\n";
-        lower--;
-        int distance2 = *upper - *lower;
-        // cout << *lower << " " << "\n";
+int32_t main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    int x, n;
+    cin >> x >> n;
+    set<int> lights = {0, x};
+    multiset<int> passages = {x};
+    for (int i = 0; i < n; i++) {
+        int p;
+        cin >> p;
+        auto upper = lights.upper_bound(p);
+        auto lower = prev(upper);
+
+        int left = *lower;
+        int right = *upper;
+
+        passages.erase(passages.find(right - left));
+        passages.insert(right - p);
+        passages.insert(p - left);
+        lights.insert(p);
+
+        cout << *passages.rbegin() << " ";
     }
     return 0;
 }
