@@ -24,7 +24,7 @@ The setup installs:
 - Apple Command Line Tools and Homebrew
 - Homebrew GCC, Boost, clang-format, Python, and GitHub CLI
 - Ripgrep, fzf, jq, tree, and ShellCheck command-line tools
-- Node.js, pnpm, CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, and eza
+- CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, and eza
 - Zsh autosuggestions and syntax highlighting
 - VSCodium and the workspace extensions
 - Codex, Orion Browser, and Geist Mono

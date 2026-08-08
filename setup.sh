@@ -61,8 +61,6 @@ readonly -a FORMULAE=(
     shellcheck
     zsh-autosuggestions
     zsh-syntax-highlighting
-    node
-    pnpm
     cmake
     ninja
     git-lfs
@@ -100,8 +98,6 @@ readonly -a EXTENSIONS=(
 )
 
 readonly -a DEVELOPER_COMMANDS=(
-    node
-    pnpm
     cmake
     ninja
     git-lfs
@@ -930,7 +926,7 @@ print_summary() {
         "Browser" "Orion" \
         "Codex" "$(find_brew_command codex || printf 'missing')" \
         "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
-        "Dev tools" "Node, pnpm, CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
+        "Dev tools" "CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
         "Zsh" "autosuggestions + syntax highlighting" \
         "Font" "Geist Mono (ss11 ligatures)"
 
