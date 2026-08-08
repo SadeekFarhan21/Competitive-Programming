@@ -11,11 +11,11 @@
             ],
             "compilerPath": "/opt/homebrew/opt/gcc/bin/g++-16",
             "compilerArgs": [
-                "-std=c++17",
+                "-std=c++23",
                 "-I/opt/homebrew/opt/boost/include"
             ],
             "cStandard": "c17",
-            "cppStandard": "c++17",
+            "cppStandard": "c++23",
             "intelliSenseMode": "macos-gcc-arm64"
         }
     ],

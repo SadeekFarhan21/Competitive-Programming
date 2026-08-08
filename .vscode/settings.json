@@ -46,13 +46,13 @@
   "clang-format.executable.osx": "/opt/homebrew/opt/clang-format/bin/clang-format",
   "clang-format.style": "file",
   "C_Cpp.default.compilerPath": "/opt/homebrew/opt/gcc/bin/g++-16",
-  "C_Cpp.default.cppStandard": "c++17",
+  "C_Cpp.default.cppStandard": "c++23",
   "C_Cpp.default.intelliSenseMode": "macos-gcc-arm64",
   "C_Cpp.inlayHints.parameterNames.enabled": false,
   "C_Cpp.inlayHints.referenceOperator.enabled": false,
   "editor.parameterHints.enabled": false,
   "code-runner.executorMap": {
-    "cpp": "cd $dir && /opt/homebrew/opt/gcc/bin/g++-16 -std=c++17 -I/opt/homebrew/opt/boost/include $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
+    "cpp": "cd $dir && /opt/homebrew/opt/gcc/bin/g++-16 -std=c++23 -I/opt/homebrew/opt/boost/include $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
   },
   "code-runner.runInTerminal": true,
   "code-runner.saveFileBeforeRun": true,
@@ -60,14 +60,14 @@
   /* CPH: use Homebrew GCC (Apple Clang lacks <bits/stdc++.h>) */
   "cph.language.cpp.Command": "/opt/homebrew/opt/gcc/bin/g++-16",
   "cph.language.cpp.command": "/opt/homebrew/opt/gcc/bin/g++-16",
-  "cph.language.cpp.Args": "-O2 -std=c++17 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
-  "cph.language.cpp.args": "-O2 -std=c++17 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
+  "cph.language.cpp.Args": "-O2 -std=c++23 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
+  "cph.language.cpp.args": "-O2 -std=c++23 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
   "cph.language.cpp.OutputArg": "-o",
   "cph.language.cpp.outputArg": "-o",
 
   /* CPH-NG: use Homebrew GCC (Apple Clang lacks <bits/stdc++.h>) */
   "cph-ng.languages.cppCompiler": "/opt/homebrew/opt/gcc/bin/g++-16",
-  "cph-ng.languages.cppCompilerArgs": "-O2 -std=c++17 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
+  "cph-ng.languages.cppCompilerArgs": "-O2 -std=c++23 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
 
   /* LaTeX */
   "latex-workshop.formatting.latex": "latexindent",

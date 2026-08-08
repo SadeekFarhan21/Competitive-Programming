@@ -8,11 +8,12 @@
 #   1. Apple Command Line Tools (Git, clang, clangd, and system SDKs)
 #   2. Repository cloning and remote validation
 #   3. Git author identity and GitHub CLI authentication
-#   4. Homebrew plus GCC, Boost, clang-format, Python, VSCodium, and Geist Mono
-#   5. All VSCodium extensions required by the C++ workspace
-#   6. Machine-specific compiler/include path synchronization
-#   7. A real GCC + PBDS compile/run test and configuration validation
-#   8. Opening the correct VSCodium workspace
+#   4. Homebrew plus development and command-line tools
+#   5. Zsh autosuggestions and syntax highlighting
+#   6. VSCodium, Orion Browser, Geist Mono, and workspace extensions
+#   7. Machine-specific compiler/include path synchronization
+#   8. A real GCC + PBDS compile/run test and configuration validation
+#   9. Opening the correct VSCodium workspace
 #
 # Credentials and API keys are never embedded in this file or committed.
 # Run from inside the repository:
@@ -27,7 +28,8 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 readonly BOOTSTRAP_SOURCE="${BASH_SOURCE[0]:-$0}"
-readonly SCRIPT_DIR="$(cd "$(dirname "$BOOTSTRAP_SOURCE")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$BOOTSTRAP_SOURCE")" && pwd)"
+readonly SCRIPT_DIR
 readonly REPOSITORY_URL="https://github.com/SadeekFarhan21/Competitive-Programming.git"
 readonly DEFAULT_REPO_DIR="${HOME}/Documents/Competitive-Programming"
 readonly GIT_AUTHOR_NAME="Farhan Sadeek"
@@ -52,11 +54,24 @@ readonly -a FORMULAE=(
     boost
     clang-format
     python
+    ripgrep
+    fzf
+    jq
+    tree
+    shellcheck
+    zsh-autosuggestions
+    zsh-syntax-highlighting
 )
 
 readonly -a CASKS=(
     vscodium
+    orion
     font-geist-mono
+)
+
+# Package policy for this bootstrap. These casks must never be added to CASKS.
+readonly -a FORBIDDEN_CASKS=(
+    brave-browser
 )
 
 # These reproduce the VSCodium setup used by this repository.
@@ -355,6 +370,75 @@ ensure_cask() {
     fi
 }
 
+validate_cask_policy() {
+    log "Checking browser package policy"
+
+    local forbidden
+    local managed
+    for forbidden in "${FORBIDDEN_CASKS[@]}"; do
+        for managed in "${CASKS[@]}"; do
+            if [[ "$managed" == "$forbidden" ]]; then
+                die "Forbidden cask '${forbidden}' is present in the managed CASKS list."
+            fi
+        done
+        ok "Blocked from bootstrap: $forbidden"
+    done
+}
+
+configure_zsh_plugins() {
+    log "Checking Zsh productivity plugins"
+
+    local brew_prefix
+    local zshrc_file="${HOME}/.zshrc"
+    local suggestions_file
+    local highlighting_file
+    local suggestions_line
+    local highlighting_line
+    local suggestions_number
+    local highlighting_number
+
+    brew_prefix="$($BREW --prefix)"
+    suggestions_file="${brew_prefix}/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    highlighting_file="${brew_prefix}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    suggestions_line="source ${suggestions_file}"
+    highlighting_line="source ${highlighting_file}"
+
+    [[ -f "$suggestions_file" ]] || missing "Zsh autosuggestions plugin file: $suggestions_file"
+    [[ -f "$highlighting_file" ]] || missing "Zsh syntax-highlighting plugin file: $highlighting_file"
+
+    if [[ "$MODE" == "install" ]]; then
+        /usr/bin/touch "$zshrc_file"
+        if ! /usr/bin/grep -Fqx "$suggestions_line" "$zshrc_file"; then
+            printf '\n%s\n' "$suggestions_line" >> "$zshrc_file"
+        fi
+        # Syntax highlighting should be sourced after other interactive plugins.
+        if ! /usr/bin/grep -Fqx "$highlighting_line" "$zshrc_file"; then
+            printf '%s\n' "$highlighting_line" >> "$zshrc_file"
+        fi
+    fi
+
+    if /usr/bin/grep -Fqx "$suggestions_line" "$zshrc_file" 2>/dev/null; then
+        ok "Zsh autosuggestions enabled"
+    else
+        missing "Zsh autosuggestions source line in ${zshrc_file}"
+    fi
+
+    if /usr/bin/grep -Fqx "$highlighting_line" "$zshrc_file" 2>/dev/null; then
+        ok "Zsh syntax highlighting enabled"
+    else
+        missing "Zsh syntax-highlighting source line in ${zshrc_file}"
+    fi
+
+    suggestions_number="$(/usr/bin/grep -nF "$suggestions_line" "$zshrc_file" 2>/dev/null | /usr/bin/head -n 1 | /usr/bin/cut -d: -f1 || true)"
+    highlighting_number="$(/usr/bin/grep -nF "$highlighting_line" "$zshrc_file" 2>/dev/null | /usr/bin/head -n 1 | /usr/bin/cut -d: -f1 || true)"
+    if [[ -n "$suggestions_number" && -n "$highlighting_number" ]] && \
+        ((suggestions_number < highlighting_number)); then
+        ok "Zsh plugin load order"
+    else
+        missing "Zsh syntax highlighting must load after autosuggestions"
+    fi
+}
+
 find_gh() {
     local brew_prefix
     brew_prefix="$($BREW --prefix)"
@@ -405,7 +489,11 @@ ensure_github_auth() {
         local login
         local permission
         login="$($GH api user --jq .login 2>/dev/null || true)"
-        "$GH" auth setup-git >/dev/null
+        # `--check` promises to be read-only. `gh auth setup-git` writes Git
+        # credential-helper configuration, so only run it during installation.
+        if [[ "$MODE" == "install" ]]; then
+            "$GH" auth setup-git >/dev/null
+        fi
         ok "GitHub account: ${login:-authenticated}"
 
         permission="$($GH repo view SadeekFarhan21/Competitive-Programming --json viewerPermission --jq .viewerPermission 2>/dev/null || true)"
@@ -543,7 +631,7 @@ sync_workspace_paths() {
                 'CompileFlags:' \
                 "  Compiler: ${gpp}" \
                 '  Add:' \
-                '    - -std=c++17' \
+                '    - -std=c++23' \
                 "    - -I${boost_include}" > "${REPO_DIR}/.clangd"
             ok "Created repository clangd configuration"
         fi
@@ -562,6 +650,7 @@ sync_workspace_paths() {
 
     if [[ "$MODE" == "install" ]]; then
         CP_GPP="$gpp" \
+        CP_GCC_VERSION="$gcc_version" \
         CP_GCC_INCLUDE_BASE="$gcc_include_base" \
         CP_GCC_TARGET_INCLUDE="$gcc_target_include" \
         CP_BOOST_INCLUDE="$boost_include" \
@@ -574,10 +663,12 @@ sync_workspace_paths() {
             s{/(?:opt/homebrew|usr/local)/opt/gcc/include/c\+\+/[0-9]+}{$ENV{CP_GCC_INCLUDE_BASE}}g;
             s{/(?:opt/homebrew|usr/local)/opt/boost/include}{$ENV{CP_BOOST_INCLUDE}}g;
             s{/(?:opt/homebrew|usr/local)/(?:Cellar/clang-format/[^/"\s]+|opt/clang-format)/bin/clang-format}{$ENV{CP_CLANG_FORMAT}}g;
-            s{"C_Cpp\.default\.cppStandard"\s*:\s*"c\+\+14"}{"C_Cpp.default.cppStandard": "c++17"}g;
+            s{(?:C/C\+\+|C\+\+): g\+\+-[0-9]+ build active file}{C++: g++-$ENV{CP_GCC_VERSION} build active file}g;
+            s{"C_Cpp\.default\.cppStandard"\s*:\s*"(?:c\+\+|gnu\+\+)[^"]+"}{"C_Cpp.default.cppStandard": "c++23"}g;
+            s{"cppStandard"\s*:\s*"(?:c\+\+|gnu\+\+)[^"]+"}{"cppStandard": "c++23"}g;
             s{"C_Cpp\.default\.intelliSenseMode"\s*:\s*"macos-gcc-(?:arm64|x64)"}{"C_Cpp.default.intelliSenseMode": "$ENV{CP_INTELLISENSE_MODE}"}g;
             s{"intelliSenseMode"\s*:\s*"macos-gcc-(?:arm64|x64)"}{"intelliSenseMode": "$ENV{CP_INTELLISENSE_MODE}"}g;
-            s{-std=c\+\+14}{-std=c++17}g;
+            s{-std=(?:c\+\+|gnu\+\+)(?:[0-9]+|[12][a-z])}{-std=c++23}g;
         ' "${config_files[@]}"
     fi
 
@@ -608,10 +699,26 @@ sync_workspace_paths() {
         missing "Workspace IntelliSense architecture: $intellisense_mode"
     fi
 
-    if printf '%s' "$all_config" | /usr/bin/grep -Fq -- '-std=c++14'; then
-        missing "Workspace still contains conflicting -std=c++14 flags"
+    local configured_std_flags
+    configured_std_flags="$(printf '%s' "$all_config" | \
+        /usr/bin/grep -Eo -- '-std=(c\+\+|gnu\+\+)[[:alnum:]]+' | \
+        /usr/bin/sort -u || true)"
+    if [[ "$configured_std_flags" == "-std=c++23" ]]; then
+        ok "C++ standard: C++23"
     else
-        ok "C++ standard: C++17"
+        missing "Workspace standard flags must only contain -std=c++23; found: ${configured_std_flags:-none}"
+    fi
+
+    local tasks_file="${REPO_DIR}/.vscode/tasks.json"
+    if [[ -f "$tasks_file" ]] && \
+        /usr/bin/grep -Fq '"type": "shell"' "$tasks_file" && \
+        /usr/bin/grep -Fq "\"label\": \"C++: g++-${gcc_version} build active file\"" "$tasks_file" && \
+        /usr/bin/grep -Fq "\"command\": \"${gpp}\"" "$tasks_file" && \
+        /usr/bin/grep -Fq "\"-I${boost_include}\"" "$tasks_file" && \
+        /usr/bin/grep -Fq '"-std=c++23"' "$tasks_file"; then
+        ok "Default shell build task: GCC ${gcc_version}, C++23, and Boost"
+    else
+        missing "Default shell build task must use ${gpp}, identify GCC ${gcc_version}, and compile as C++23 with Boost"
     fi
 }
 
@@ -638,14 +745,15 @@ verify_workspace() {
         '#include <ext/pb_ds/assoc_container.hpp>' \
         '#include <ext/pb_ds/tree_policy.hpp>' \
         'using namespace __gnu_pbds;' \
+        'static_assert(__cplusplus >= 202100L, "C++23 mode is required");' \
         'int main() {' \
         '    tree<int, null_type, std::less<int>, rb_tree_tag, tree_order_statistics_node_update> values;' \
         '    values.insert(7);' \
         '    return values.order_of_key(8) == 1 ? 0 : 1;' \
         '}' > "$source_file"
 
-    if "$gpp" -std=c++17 -I"${boost_prefix}/include" "$source_file" -o "$output_file" && "$output_file"; then
-        ok "GCC, bits/stdc++.h, and PBDS"
+    if "$gpp" -std=c++23 -I"${boost_prefix}/include" "$source_file" -o "$output_file" && "$output_file"; then
+        ok "GCC C++23, bits/stdc++.h, and PBDS"
     else
         missing "GCC/PBDS smoke test"
     fi
@@ -694,6 +802,14 @@ verify_workspace() {
         missing "Executable permission on ${REPO_DIR}/setup.sh"
     fi
 
+    local shellcheck_bin
+    shellcheck_bin="$($BREW --prefix shellcheck)/bin/shellcheck"
+    if [[ -x "$shellcheck_bin" ]] && "$shellcheck_bin" -x "${REPO_DIR}/setup.sh"; then
+        ok "Bootstrap script passes ShellCheck"
+    else
+        missing "ShellCheck validation for ${REPO_DIR}/setup.sh"
+    fi
+
     if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"editor.fontLigatures": "'"'"'ss11'"'"'"' "${REPO_DIR}/.vscode/settings.json"; then
         ok "Geist Mono with coding ligatures (ss11)"
@@ -731,6 +847,9 @@ print_summary() {
         "clangd" "/usr/bin/clangd" \
         "clang-format" "$($BREW --prefix clang-format)/bin/clang-format" \
         "VSCodium" "${CODIUM:-missing}" \
+        "Browser" "Orion" \
+        "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
+        "Zsh" "autosuggestions + syntax highlighting" \
         "Font" "Geist Mono (ss11 ligatures)"
 
     printf '\n%s\n' \
@@ -782,6 +901,8 @@ main() {
         exit 1
     fi
 
+    validate_cask_policy
+
     log "Checking Homebrew packages"
     local item
     for item in "${FORMULAE[@]}"; do
@@ -791,6 +912,7 @@ main() {
         ensure_cask "$item"
     done
 
+    configure_zsh_plugins
     ensure_github_auth
     ensure_extensions
 
