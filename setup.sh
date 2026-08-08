@@ -61,10 +61,22 @@ readonly -a FORMULAE=(
     shellcheck
     zsh-autosuggestions
     zsh-syntax-highlighting
+    node
+    pnpm
+    cmake
+    ninja
+    git-lfs
+    vim
+    tmux
+    uv
+    fd
+    bat
+    eza
 )
 
 readonly -a CASKS=(
     vscodium
+    codex
     orion
     font-geist-mono
 )
@@ -85,6 +97,21 @@ readonly -a EXTENSIONS=(
     wakatime.vscode-wakatime
     xaver.clang-format
     zhuangtongfa.material-theme
+)
+
+readonly -a DEVELOPER_COMMANDS=(
+    node
+    pnpm
+    cmake
+    ninja
+    git-lfs
+    vim
+    tmux
+    uv
+    fd
+    bat
+    eza
+    codex
 )
 
 usage() {
@@ -436,6 +463,59 @@ configure_zsh_plugins() {
         ok "Zsh plugin load order"
     else
         missing "Zsh syntax highlighting must load after autosuggestions"
+    fi
+}
+
+find_brew_command() {
+    local command_name="$1"
+    local brew_prefix
+    brew_prefix="$($BREW --prefix)"
+
+    if [[ -x "${brew_prefix}/bin/${command_name}" ]]; then
+        printf '%s\n' "${brew_prefix}/bin/${command_name}"
+    elif command -v "$command_name" >/dev/null 2>&1; then
+        command -v "$command_name"
+    else
+        return 1
+    fi
+}
+
+verify_developer_tools() {
+    log "Checking general developer workstation tools"
+
+    local command_name
+    local command_path
+    local git_lfs
+    local version_text
+    for command_name in "${DEVELOPER_COMMANDS[@]}"; do
+        command_path="$(find_brew_command "$command_name" || true)"
+        if [[ -z "$command_path" ]]; then
+            missing "Developer command: $command_name"
+            continue
+        fi
+
+        case "$command_name" in
+            tmux)
+                version_text="$("$command_path" -V 2>/dev/null | /usr/bin/head -n 1 || true)"
+                ;;
+            *)
+                version_text="$("$command_path" --version 2>/dev/null | /usr/bin/head -n 1 || true)"
+                ;;
+        esac
+        ok "${command_name}: ${version_text:-$command_path}"
+    done
+
+    git_lfs="$(find_brew_command git-lfs || true)"
+    if [[ "$MODE" == "install" && -n "$git_lfs" ]]; then
+        "$git_lfs" install --skip-repo >/dev/null
+    fi
+
+    if [[ -n "$git_lfs" ]] && \
+        /usr/bin/git config --global --get filter.lfs.process 2>/dev/null | \
+            /usr/bin/grep -Fq 'git-lfs'; then
+        ok "Git LFS integration"
+    else
+        missing "Git LFS integration"
     fi
 }
 
@@ -848,12 +928,15 @@ print_summary() {
         "clang-format" "$($BREW --prefix clang-format)/bin/clang-format" \
         "VSCodium" "${CODIUM:-missing}" \
         "Browser" "Orion" \
+        "Codex" "$(find_brew_command codex || printf 'missing')" \
         "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
+        "Dev tools" "Node, pnpm, CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
         "Zsh" "autosuggestions + syntax highlighting" \
         "Font" "Geist Mono (ss11 ligatures)"
 
     printf '\n%s\n' \
         "Manual, security-sensitive follow-up:" \
+        "  - Run codex and sign in with ChatGPT the first time you use it." \
         "  - Sign into WakaTime inside VSCodium if you use it." \
         "  - Install the Competitive Companion browser extension if you parse problems from a browser." \
         "  - LaTeX tooling is intentionally not installed because a TeX distribution is several gigabytes."
@@ -913,6 +996,7 @@ main() {
     done
 
     configure_zsh_plugins
+    verify_developer_tools
     ensure_github_auth
     ensure_extensions
 

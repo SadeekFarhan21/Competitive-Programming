@@ -24,9 +24,10 @@ The setup installs:
 - Apple Command Line Tools and Homebrew
 - Homebrew GCC, Boost, clang-format, Python, and GitHub CLI
 - Ripgrep, fzf, jq, tree, and ShellCheck command-line tools
+- Node.js, pnpm, CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, and eza
 - Zsh autosuggestions and syntax highlighting
 - VSCodium and the workspace extensions
-- Orion Browser and Geist Mono
+- Codex, Orion Browser, and Geist Mono
 - C++23 compiler, clangd, formatter, snippets, Code Runner, CPH, and CPH-NG settings
 
 The bootstrap explicitly excludes the `brave-browser` Homebrew cask from its managed package list. It does not control software installed manually outside the bootstrap.
@@ -58,6 +59,7 @@ Useful options:
 
 ## Manual follow-up
 
+- Run `codex` and sign in with ChatGPT the first time you use it.
 - Sign in to WakaTime inside VSCodium if you use it.
 - Install the Competitive Companion browser extension if you parse problems from contest sites.
 - LaTeX is not installed automatically because a TeX distribution is several gigabytes.
