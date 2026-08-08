@@ -33,7 +33,7 @@ readonly SCRIPT_DIR
 readonly REPOSITORY_URL="https://github.com/SadeekFarhan21/Competitive-Programming.git"
 readonly DEFAULT_REPO_DIR="${HOME}/Documents/Competitive-Programming"
 readonly GIT_AUTHOR_NAME="Farhan Sadeek"
-readonly GIT_AUTHOR_EMAIL="farhansadeek19@gmail.com"
+readonly GIT_AUTHOR_EMAIL="farhan@farhansadeek.com"
 readonly MINIMUM_FREE_DISK_MB=2048
 
 REPO_DIR=""
