@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 
-# Bootstrap this competitive-programming workspace on macOS.
+# Complete disaster-recovery bootstrap for this competitive-programming
+# workspace on macOS. The script is deliberately idempotent: running it again
+# checks existing components and only installs or updates what is missing.
+#
+# What the default run handles:
+#   1. Apple Command Line Tools (Git, clang, clangd, and system SDKs)
+#   2. Repository cloning and remote validation
+#   3. Git author identity and GitHub CLI authentication
+#   4. Homebrew plus GCC, Boost, clang-format, Python, VSCodium, and Geist Mono
+#   5. All VSCodium extensions required by the C++ workspace
+#   6. Machine-specific compiler/include path synchronization
+#   7. A real GCC + PBDS compile/run test and configuration validation
+#   8. Opening the correct VSCodium workspace
+#
+# Credentials and API keys are never embedded in this file or committed.
 # Run from inside the repository:
 #   ./setup.sh
 # Or download this one file on a fresh Mac; it will clone the repository too.
@@ -16,6 +30,9 @@ readonly BOOTSTRAP_SOURCE="${BASH_SOURCE[0]:-$0}"
 readonly SCRIPT_DIR="$(cd "$(dirname "$BOOTSTRAP_SOURCE")" && pwd)"
 readonly REPOSITORY_URL="https://github.com/SadeekFarhan21/Competitive-Programming.git"
 readonly DEFAULT_REPO_DIR="${HOME}/Documents/Competitive-Programming"
+readonly GIT_AUTHOR_NAME="Farhan Sadeek"
+readonly GIT_AUTHOR_EMAIL="farhansadeek19@gmail.com"
+readonly MINIMUM_FREE_DISK_MB=2048
 
 REPO_DIR=""
 WORKSPACE_FILE=""
@@ -24,11 +41,17 @@ MODE="install"
 FAILURES=0
 BREW=""
 CODIUM=""
+GH=""
+TEMP_DIR=""
+OPEN_EDITOR=true
+SKIP_GITHUB_AUTH=false
 
 readonly -a FORMULAE=(
+    gh
     gcc
     boost
     clang-format
+    python
 )
 
 readonly -a CASKS=(
@@ -38,6 +61,7 @@ readonly -a CASKS=(
 
 # These reproduce the VSCodium setup used by this repository.
 readonly -a EXTENSIONS=(
+    formulahendry.code-runner
     langningchen.cph-ng
     llvm-vs-code-extensions.vscode-clangd
     pkief.material-icon-theme
@@ -50,10 +74,15 @@ readonly -a EXTENSIONS=(
 
 usage() {
     printf '%s\n' \
-        "Usage: ./setup.sh [--check]" \
+        "Usage: ./setup.sh [options]" \
         "" \
         "With no option, installs and configures the complete workspace." \
-        "--check verifies the setup without changing anything."
+        "" \
+        "Options:" \
+        "  --check              Verify everything without changing anything." \
+        "  --no-open            Do not open VSCodium after a successful setup." \
+        "  --skip-github-auth   Install gh, but do not start its secure login flow." \
+        "  -h, --help           Show this help message."
 }
 
 log() {
@@ -78,6 +107,35 @@ die() {
     exit 1
 }
 
+cleanup() {
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        case "$TEMP_DIR" in
+            "${TMPDIR:-/tmp}"/cp-setup.*|/tmp/cp-setup.*)
+                /bin/rm -rf -- "$TEMP_DIR"
+                ;;
+            *)
+                warn "Refusing to remove unexpected temporary path: $TEMP_DIR"
+                ;;
+        esac
+    fi
+}
+
+on_error() {
+    local exit_code="$1"
+    local line_number="$2"
+    local command_text="$3"
+
+    printf '\n\033[1;31mSetup stopped unexpectedly.\033[0m\n' >&2
+    printf '    Exit code: %s\n' "$exit_code" >&2
+    printf '    Line:      %s\n' "$line_number" >&2
+    printf '    Command:   %s\n' "$command_text" >&2
+    printf 'Re-run ./setup.sh after correcting the issue; completed steps are safe to repeat.\n' >&2
+    exit "$exit_code"
+}
+
+trap cleanup EXIT
+trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
 find_brew() {
     if command -v brew >/dev/null 2>&1; then
         command -v brew
@@ -88,6 +146,40 @@ find_brew() {
     else
         return 1
     fi
+}
+
+ensure_macos_preflight() {
+    log "Running macOS preflight checks"
+
+    local architecture
+    local os_version
+    local available_kb
+    local available_mb
+
+    [[ "$(uname -s)" == "Darwin" ]] || die "This setup supports macOS only."
+
+    architecture="$(uname -m)"
+    case "$architecture" in
+        arm64|x86_64)
+            ok "Architecture: $architecture"
+            ;;
+        *)
+            die "Unsupported Mac architecture: $architecture"
+            ;;
+    esac
+
+    os_version="$(/usr/bin/sw_vers -productVersion)"
+    ok "macOS $os_version"
+
+    [[ -x /usr/bin/curl ]] || die "macOS curl is missing from /usr/bin/curl."
+    ok "System curl"
+
+    available_kb="$(/bin/df -Pk "${HOME}" | /usr/bin/awk 'NR == 2 { print $4 }')"
+    available_mb=$((available_kb / 1024))
+    if ((available_mb < MINIMUM_FREE_DISK_MB)); then
+        die "At least ${MINIMUM_FREE_DISK_MB} MB of free disk space is required; ${available_mb} MB is available."
+    fi
+    ok "Free disk space: ${available_mb} MB"
 }
 
 configure_homebrew_shell() {
@@ -154,7 +246,60 @@ ensure_repository() {
 
     WORKSPACE_FILE="${REPO_DIR}/competitive-programming.code-workspace"
     [[ -f "$WORKSPACE_FILE" ]] || die "The repository clone is missing its workspace file."
+
+    if ! /usr/bin/git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        die "${REPO_DIR} contains workspace files but is not a Git repository. Use the standalone installer so it can create a proper clone."
+    fi
+
+    local origin_url
+    origin_url="$(/usr/bin/git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
+    if [[ -z "$origin_url" ]]; then
+        if [[ "$MODE" == "install" ]]; then
+            /usr/bin/git -C "$REPO_DIR" remote add origin "$REPOSITORY_URL"
+            origin_url="$REPOSITORY_URL"
+        else
+            missing "Git remote named origin"
+        fi
+    fi
+
+    case "$origin_url" in
+        "$REPOSITORY_URL"|git@github.com:SadeekFarhan21/Competitive-Programming.git)
+            ok "Git remote: $origin_url"
+            ;;
+        "")
+            ;;
+        *)
+            warn "Repository origin differs from the bootstrap source: $origin_url"
+            ;;
+    esac
+
     ok "$REPO_DIR"
+}
+
+ensure_git_identity() {
+    log "Checking Git author identity"
+
+    local current_name
+    local current_email
+    current_name="$(/usr/bin/git config --global --get user.name || true)"
+    current_email="$(/usr/bin/git config --global --get user.email || true)"
+
+    if [[ "$MODE" == "install" ]]; then
+        if [[ "$current_name" != "$GIT_AUTHOR_NAME" ]]; then
+            /usr/bin/git config --global user.name "$GIT_AUTHOR_NAME"
+        fi
+        if [[ "$current_email" != "$GIT_AUTHOR_EMAIL" ]]; then
+            /usr/bin/git config --global user.email "$GIT_AUTHOR_EMAIL"
+        fi
+        current_name="$GIT_AUTHOR_NAME"
+        current_email="$GIT_AUTHOR_EMAIL"
+    fi
+
+    if [[ "$current_name" == "$GIT_AUTHOR_NAME" && "$current_email" == "$GIT_AUTHOR_EMAIL" ]]; then
+        ok "${GIT_AUTHOR_NAME} <${GIT_AUTHOR_EMAIL}>"
+    else
+        missing "Git author: ${GIT_AUTHOR_NAME} <${GIT_AUTHOR_EMAIL}>"
+    fi
 }
 
 ensure_homebrew() {
@@ -207,6 +352,79 @@ ensure_cask() {
     else
         "$BREW" install --cask "$cask"
         ok "Homebrew cask: $cask"
+    fi
+}
+
+find_gh() {
+    local brew_prefix
+    brew_prefix="$($BREW --prefix)"
+
+    if command -v gh >/dev/null 2>&1; then
+        command -v gh
+    elif [[ -x "${brew_prefix}/bin/gh" ]]; then
+        printf '%s\n' "${brew_prefix}/bin/gh"
+    else
+        return 1
+    fi
+}
+
+ensure_github_auth() {
+    log "Checking GitHub authentication"
+
+    GH="$(find_gh || true)"
+    if [[ -z "$GH" ]]; then
+        missing "GitHub CLI executable"
+        return
+    fi
+
+    ok "$($GH --version | /usr/bin/head -n 1)"
+
+    if [[ "$SKIP_GITHUB_AUTH" == "true" ]]; then
+        warn "GitHub authentication was skipped by request."
+        return
+    fi
+
+    if ! "$GH" auth status --hostname github.com >/dev/null 2>&1; then
+        if [[ "$MODE" == "check" ]]; then
+            missing "Authenticated GitHub CLI session"
+            return
+        fi
+
+        if [[ ! -t 0 ]]; then
+            missing "Interactive terminal required for secure GitHub login"
+            return
+        fi
+
+        printf '%s\n' \
+            "GitHub will now open a secure browser/device login." \
+            "The bootstrap never reads or stores your password or token."
+        "$GH" auth login --hostname github.com --git-protocol https --web
+    fi
+
+    if "$GH" auth status --hostname github.com >/dev/null 2>&1; then
+        local login
+        local permission
+        login="$($GH api user --jq .login 2>/dev/null || true)"
+        "$GH" auth setup-git >/dev/null
+        ok "GitHub account: ${login:-authenticated}"
+
+        permission="$($GH repo view SadeekFarhan21/Competitive-Programming --json viewerPermission --jq .viewerPermission 2>/dev/null || true)"
+        case "$permission" in
+            ADMIN|MAINTAIN|WRITE)
+                ok "Repository permission: $permission"
+                ;;
+            READ|TRIAGE)
+                warn "The authenticated GitHub account has $permission permission and cannot push directly."
+                ;;
+            "")
+                warn "Could not verify GitHub repository permission; network access may be unavailable."
+                ;;
+            *)
+                warn "GitHub reported repository permission: $permission"
+                ;;
+        esac
+    else
+        missing "Authenticated GitHub CLI session"
     fi
 }
 
@@ -285,6 +503,7 @@ sync_workspace_paths() {
     local gcc_target_include
     local boost_include
     local clang_format
+    local intellisense_mode
 
     gcc_prefix="$($BREW --prefix gcc)"
     boost_prefix="$($BREW --prefix boost)"
@@ -300,7 +519,21 @@ sync_workspace_paths() {
     boost_include="${boost_prefix}/include"
     clang_format="${format_prefix}/bin/clang-format"
 
+    case "$(uname -m)" in
+        arm64)
+            intellisense_mode="macos-gcc-arm64"
+            ;;
+        x86_64)
+            intellisense_mode="macos-gcc-x64"
+            ;;
+        *)
+            die "Unsupported architecture while configuring IntelliSense."
+            ;;
+    esac
+
     [[ -x "$clang_format" ]] || die "clang-format was installed but is not executable at ${clang_format}."
+    [[ -d "$gcc_include_base" ]] || die "GCC C++ headers were not found at ${gcc_include_base}."
+    [[ -d "$boost_include" ]] || die "Boost headers were not found at ${boost_include}."
 
     if [[ ! -f "${REPO_DIR}/.clangd" ]]; then
         if [[ "$MODE" == "check" ]]; then
@@ -333,6 +566,7 @@ sync_workspace_paths() {
         CP_GCC_TARGET_INCLUDE="$gcc_target_include" \
         CP_BOOST_INCLUDE="$boost_include" \
         CP_CLANG_FORMAT="$clang_format" \
+        CP_INTELLISENSE_MODE="$intellisense_mode" \
         /usr/bin/perl -0pi -e '
             s{/(?:opt/homebrew|usr/local)/opt/gcc/bin/g\+\+-[0-9]+}{$ENV{CP_GPP}}g;
             s{/(?:opt/homebrew|usr/local)/opt/gcc/include/c\+\+/[0-9]+/(?:aarch64|x86_64)-apple-darwin[0-9]+}{$ENV{CP_GCC_TARGET_INCLUDE}}g;
@@ -340,6 +574,10 @@ sync_workspace_paths() {
             s{/(?:opt/homebrew|usr/local)/opt/gcc/include/c\+\+/[0-9]+}{$ENV{CP_GCC_INCLUDE_BASE}}g;
             s{/(?:opt/homebrew|usr/local)/opt/boost/include}{$ENV{CP_BOOST_INCLUDE}}g;
             s{/(?:opt/homebrew|usr/local)/(?:Cellar/clang-format/[^/"\s]+|opt/clang-format)/bin/clang-format}{$ENV{CP_CLANG_FORMAT}}g;
+            s{"C_Cpp\.default\.cppStandard"\s*:\s*"c\+\+14"}{"C_Cpp.default.cppStandard": "c++17"}g;
+            s{"C_Cpp\.default\.intelliSenseMode"\s*:\s*"macos-gcc-(?:arm64|x64)"}{"C_Cpp.default.intelliSenseMode": "$ENV{CP_INTELLISENSE_MODE}"}g;
+            s{"intelliSenseMode"\s*:\s*"macos-gcc-(?:arm64|x64)"}{"intelliSenseMode": "$ENV{CP_INTELLISENSE_MODE}"}g;
+            s{-std=c\+\+14}{-std=c++17}g;
         ' "${config_files[@]}"
     fi
 
@@ -363,6 +601,18 @@ sync_workspace_paths() {
     else
         missing "Workspace references current Boost headers: $boost_include"
     fi
+
+    if printf '%s' "$all_config" | /usr/bin/grep -Fq "$intellisense_mode"; then
+        ok "IntelliSense architecture: $intellisense_mode"
+    else
+        missing "Workspace IntelliSense architecture: $intellisense_mode"
+    fi
+
+    if printf '%s' "$all_config" | /usr/bin/grep -Fq -- '-std=c++14'; then
+        missing "Workspace still contains conflicting -std=c++14 flags"
+    else
+        ok "C++ standard: C++17"
+    fi
 }
 
 verify_workspace() {
@@ -371,7 +621,6 @@ verify_workspace() {
     local gcc_prefix
     local boost_prefix
     local gpp
-    local temp_dir
     local source_file
     local output_file
 
@@ -380,9 +629,9 @@ verify_workspace() {
     gpp="$(find_gpp "$gcc_prefix" || true)"
     [[ -n "$gpp" ]] || die "Could not find Homebrew g++."
 
-    temp_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/cp-setup.XXXXXX")"
-    source_file="${temp_dir}/smoke.cpp"
-    output_file="${temp_dir}/smoke"
+    TEMP_DIR="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/cp-setup.XXXXXX")"
+    source_file="${TEMP_DIR}/smoke.cpp"
+    output_file="${TEMP_DIR}/smoke"
 
     printf '%s\n' \
         '#include <bits/stdc++.h>' \
@@ -410,7 +659,8 @@ verify_workspace() {
         missing "clang-format smoke test"
     fi
 
-    /bin/rm -rf -- "$temp_dir"
+    /bin/rm -rf -- "$TEMP_DIR"
+    TEMP_DIR=""
 
     if [[ -s "${REPO_DIR}/.vscode/cpp.json.code-snippets" ]]; then
         ok "C++ workspace snippets"
@@ -419,7 +669,15 @@ verify_workspace() {
     fi
 
     if [[ -s "${REPO_DIR}/.clang-format" ]]; then
-        ok "Repository clang-format rules"
+        local configured_column_limit
+        configured_column_limit="$("$($BREW --prefix clang-format)/bin/clang-format" \
+            --style="file:${REPO_DIR}/.clang-format" \
+            --dump-config 2>/dev/null | /usr/bin/awk '/^ColumnLimit:/ { print $2; exit }')"
+        if [[ "$configured_column_limit" == "0" ]]; then
+            ok "Repository clang-format rules (no forced line wrapping)"
+        else
+            missing "clang-format ColumnLimit: expected 0, found ${configured_column_limit:-unknown}"
+        fi
     else
         missing "${REPO_DIR}/.clang-format"
     fi
@@ -429,27 +687,85 @@ verify_workspace() {
     else
         missing "Apple clangd"
     fi
+
+    if [[ -x "${REPO_DIR}/setup.sh" ]]; then
+        ok "Bootstrap script is executable"
+    else
+        missing "Executable permission on ${REPO_DIR}/setup.sh"
+    fi
+
+    if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"editor.fontLigatures": "'"'"'ss11'"'"'"' "${REPO_DIR}/.vscode/settings.json"; then
+        ok "Geist Mono with coding ligatures (ss11)"
+    else
+        missing "Geist Mono/ss11 editor settings"
+    fi
+
+    if /usr/bin/git -C "$REPO_DIR" check-ignore --no-index -q .cph-ng/setup-test.bin; then
+        ok "Generated CPH-NG binaries are ignored"
+    else
+        missing ".cph-ng/*.bin rule in .gitignore"
+    fi
+}
+
+print_summary() {
+    local gcc_prefix
+    local gpp
+    local github_account
+
+    gcc_prefix="$($BREW --prefix gcc)"
+    gpp="$(find_gpp "$gcc_prefix" || true)"
+    github_account=""
+    if [[ -n "$GH" ]] && "$GH" auth status --hostname github.com >/dev/null 2>&1; then
+        github_account="$($GH api user --jq .login 2>/dev/null || true)"
+    fi
+
+    log "Installation summary"
+    printf '    %-20s %s\n' \
+        "Repository" "$REPO_DIR" \
+        "Workspace" "$WORKSPACE_FILE" \
+        "Git author" "${GIT_AUTHOR_NAME} <${GIT_AUTHOR_EMAIL}>" \
+        "GitHub account" "${github_account:-not authenticated/skipped}" \
+        "Homebrew" "$BREW" \
+        "GNU C++" "${gpp:-missing}" \
+        "clangd" "/usr/bin/clangd" \
+        "clang-format" "$($BREW --prefix clang-format)/bin/clang-format" \
+        "VSCodium" "${CODIUM:-missing}" \
+        "Font" "Geist Mono (ss11 ligatures)"
+
+    printf '\n%s\n' \
+        "Manual, security-sensitive follow-up:" \
+        "  - Sign into WakaTime inside VSCodium if you use it." \
+        "  - Install the Competitive Companion browser extension if you parse problems from a browser." \
+        "  - LaTeX tooling is intentionally not installed because a TeX distribution is several gigabytes."
 }
 
 main() {
-    case "${1:-}" in
-        "")
-            ;;
-        --check)
-            MODE="check"
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            usage >&2
-            exit 2
-            ;;
-    esac
+    while (($# > 0)); do
+        case "$1" in
+            --check)
+                MODE="check"
+                OPEN_EDITOR=false
+                ;;
+            --no-open)
+                OPEN_EDITOR=false
+                ;;
+            --skip-github-auth)
+                SKIP_GITHUB_AUTH=true
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            *)
+                usage >&2
+                die "Unknown option: $1"
+                ;;
+        esac
+        shift
+    done
 
-    [[ "$(uname -s)" == "Darwin" ]] || die "This setup targets macOS."
-
+    ensure_macos_preflight
     ensure_command_line_tools
     ensure_repository
 
@@ -458,6 +774,7 @@ main() {
         exit 1
     fi
 
+    ensure_git_identity
     ensure_homebrew
 
     if [[ -z "$BREW" ]]; then
@@ -474,6 +791,7 @@ main() {
         ensure_cask "$item"
     done
 
+    ensure_github_auth
     ensure_extensions
 
     # Only inspect paths when their packages are available.
@@ -484,8 +802,11 @@ main() {
 
     if ((FAILURES > 0)); then
         printf '\n\033[1;31mSetup found %d problem(s).\033[0m\n' "$FAILURES" >&2
+        printf 'Run ./setup.sh to install missing components, or inspect the messages above.\n' >&2
         exit 1
     fi
+
+    print_summary
 
     if [[ "$MODE" == "check" ]]; then
         printf '\n\033[1;32mEverything is installed and configured.\033[0m\n'
@@ -496,10 +817,12 @@ main() {
     printf '%s\n' \
         "The compiler, Boost, clangd, clang-format, Geist Mono, snippets," \
         "VSCodium, and workspace extensions are ready."
-    warn "WakaTime still requires your account/API-key sign-in because secrets are not stored in Git."
-
-    log "Opening the competitive-programming workspace"
-    "$CODIUM" "$WORKSPACE_FILE" >/dev/null 2>&1 &
+    if [[ "$OPEN_EDITOR" == "true" ]]; then
+        log "Opening the competitive-programming workspace"
+        "$CODIUM" "$WORKSPACE_FILE" >/dev/null 2>&1 &
+    else
+        ok "VSCodium launch skipped"
+    fi
 }
 
 main "$@"
