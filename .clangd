@@ -1,0 +1,5 @@
+CompileFlags:
+  Compiler: /opt/homebrew/opt/gcc/bin/g++-16
+  Add:
+    - -std=c++17
+    - -I/opt/homebrew/opt/boost/include
