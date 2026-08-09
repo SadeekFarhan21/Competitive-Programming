@@ -9,7 +9,7 @@
 #   2. Repository cloning and remote validation
 #   3. Git author identity and GitHub CLI authentication
 #   4. Homebrew plus development and command-line tools
-#   5. Zsh autosuggestions and syntax highlighting
+#   5. Oh My Zsh with the Agnoster theme and productivity plugins
 #   6. VSCodium, Orion Browser, Geist Mono, and workspace extensions
 #   7. Machine-specific compiler/include path synchronization
 #   8. A real GCC + PBDS compile/run test and configuration validation
@@ -19,6 +19,7 @@
 # Run from inside the repository:
 #   ./setup.sh
 # Or download this one file on a fresh Mac; it will clone the repository too.
+# This form automatically avoids opening VSCodium.
 #   /bin/bash -c "$(/usr/bin/curl -fsSL https://raw.githubusercontent.com/SadeekFarhan21/Competitive-Programming/main/setup.sh)"
 #
 # A read-only health check is also available:
@@ -28,6 +29,11 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 readonly BOOTSTRAP_SOURCE="${BASH_SOURCE[0]:-$0}"
+RUNNING_FROM_COMMAND_STRING=false
+if [[ -z "${BASH_SOURCE[0]:-}" ]]; then
+    RUNNING_FROM_COMMAND_STRING=true
+fi
+readonly RUNNING_FROM_COMMAND_STRING
 SCRIPT_DIR="$(cd "$(dirname "$BOOTSTRAP_SOURCE")" && pwd)"
 readonly SCRIPT_DIR
 readonly REPOSITORY_URL="https://github.com/SadeekFarhan21/Competitive-Programming.git"
@@ -46,7 +52,10 @@ CODIUM=""
 GH=""
 TEMP_DIR=""
 OPEN_EDITOR=true
-SKIP_GITHUB_AUTH=false
+
+if [[ "$RUNNING_FROM_COMMAND_STRING" == "true" ]]; then
+    OPEN_EDITOR=false
+fi
 
 readonly -a FORMULAE=(
     gh
@@ -74,7 +83,6 @@ readonly -a FORMULAE=(
 
 readonly -a CASKS=(
     vscodium
-    codex
     orion
     font-geist-mono
 )
@@ -107,7 +115,6 @@ readonly -a DEVELOPER_COMMANDS=(
     fd
     bat
     eza
-    codex
 )
 
 usage() {
@@ -115,11 +122,11 @@ usage() {
         "Usage: ./setup.sh [options]" \
         "" \
         "With no option, installs and configures the complete workspace." \
+        "Apple Command Line Tools and GitHub login may require interaction." \
         "" \
         "Options:" \
         "  --check              Verify everything without changing anything." \
         "  --no-open            Do not open VSCodium after a successful setup." \
-        "  --skip-github-auth   Install gh, but do not start its secure login flow." \
         "  -h, --help           Show this help message."
 }
 
@@ -244,12 +251,12 @@ ensure_command_line_tools() {
         return
     fi
 
+    if [[ ! -t 0 ]]; then
+        die "Apple Command Line Tools are missing and their installer requires an interactive terminal."
+    fi
+
     warn "Apple requires its installer dialog for the Command Line Tools."
     /usr/bin/xcode-select --install >/dev/null 2>&1 || true
-
-    if [[ ! -t 0 ]]; then
-        die "Complete the Command Line Tools installation, then run ./setup.sh again."
-    fi
 
     until /usr/bin/xcode-select -p >/dev/null 2>&1; do
         printf 'Complete the Apple installer, then press Return to continue: '
@@ -278,7 +285,7 @@ ensure_repository() {
         fi
 
         /bin/mkdir -p "$(dirname "$DEFAULT_REPO_DIR")"
-        /usr/bin/git clone "$REPOSITORY_URL" "$DEFAULT_REPO_DIR"
+        GIT_TERMINAL_PROMPT=0 /usr/bin/git clone "$REPOSITORY_URL" "$DEFAULT_REPO_DIR"
         REPO_DIR="$DEFAULT_REPO_DIR"
     fi
 
@@ -375,7 +382,7 @@ ensure_formula() {
     elif [[ "$MODE" == "check" ]]; then
         missing "Homebrew formula: $formula"
     else
-        "$BREW" install "$formula"
+        NONINTERACTIVE=1 "$BREW" install "$formula"
         ok "Homebrew formula: $formula"
     fi
 }
@@ -388,8 +395,30 @@ ensure_cask() {
     elif [[ "$MODE" == "check" ]]; then
         missing "Homebrew cask: $cask"
     else
-        "$BREW" install --cask "$cask"
+        NONINTERACTIVE=1 "$BREW" install --cask "$cask"
         ok "Homebrew cask: $cask"
+    fi
+}
+
+geist_mono_is_installed() {
+    [[ -d "${HOME}/Library/Fonts" ]] && \
+        /usr/bin/find "${HOME}/Library/Fonts" -maxdepth 1 \
+            \( -name 'GeistMono-Regular.otf' -o -name 'GeistMono-Regular.ttf' \) \
+            -print -quit 2>/dev/null | /usr/bin/grep -q .
+}
+
+ensure_geist_mono_font() {
+    log "Checking the macOS Geist Mono font installation"
+
+    if ! geist_mono_is_installed && [[ "$MODE" == "install" ]]; then
+        warn "Homebrew has no usable Geist Mono Regular font; reinstalling the font cask."
+        NONINTERACTIVE=1 "$BREW" reinstall --cask font-geist-mono
+    fi
+
+    if geist_mono_is_installed; then
+        ok "Geist Mono Regular is installed in ${HOME}/Library/Fonts"
+    else
+        missing "Geist Mono Regular in ${HOME}/Library/Fonts"
     fi
 }
 
@@ -431,13 +460,11 @@ configure_zsh_plugins() {
 
     if [[ "$MODE" == "install" ]]; then
         /usr/bin/touch "$zshrc_file"
-        if ! /usr/bin/grep -Fqx "$suggestions_line" "$zshrc_file"; then
-            printf '\n%s\n' "$suggestions_line" >> "$zshrc_file"
-        fi
-        # Syntax highlighting should be sourced after other interactive plugins.
-        if ! /usr/bin/grep -Fqx "$highlighting_line" "$zshrc_file"; then
-            printf '%s\n' "$highlighting_line" >> "$zshrc_file"
-        fi
+        # Reappend these on every run so they remain after Oh My Zsh, with
+        # syntax highlighting last among the interactive plugins.
+        /usr/bin/sed -i '' "\|^${suggestions_line}$|d" "$zshrc_file"
+        /usr/bin/sed -i '' "\|^${highlighting_line}$|d" "$zshrc_file"
+        printf '\n%s\n%s\n' "$suggestions_line" "$highlighting_line" >> "$zshrc_file"
     fi
 
     if /usr/bin/grep -Fqx "$suggestions_line" "$zshrc_file" 2>/dev/null; then
@@ -462,6 +489,71 @@ configure_zsh_plugins() {
     fi
 }
 
+ensure_oh_my_zsh() {
+    log "Checking Oh My Zsh and the Agnoster theme"
+
+    local oh_my_zsh_dir="${HOME}/.oh-my-zsh"
+    local zshrc_file="${HOME}/.zshrc"
+    local theme_line='ZSH_THEME="agnoster"'
+    # Keep $HOME literal because this is the line written to .zshrc.
+    # shellcheck disable=SC2016
+    local source_line='source "$HOME/.oh-my-zsh/oh-my-zsh.sh"'
+    local zshrc_temp
+
+    if [[ ! -f "${oh_my_zsh_dir}/oh-my-zsh.sh" ]]; then
+        if [[ "$MODE" == "check" ]]; then
+            missing "Oh My Zsh: ${oh_my_zsh_dir}"
+        else
+            log "Installing Oh My Zsh"
+            ZSH="$oh_my_zsh_dir" RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
+                /bin/sh -c "$(/usr/bin/curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        fi
+    fi
+
+    if [[ "$MODE" == "install" ]]; then
+        /usr/bin/touch "$zshrc_file"
+
+        # Normalize every active theme assignment so a later setting cannot
+        # override Agnoster before Oh My Zsh is loaded.
+        if /usr/bin/grep -Eq '^[[:space:]]*ZSH_THEME=' "$zshrc_file"; then
+            /usr/bin/sed -i '' -E 's/^[[:space:]]*ZSH_THEME=.*/ZSH_THEME="agnoster"/' "$zshrc_file"
+        else
+            zshrc_temp="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/cp-zshrc.XXXXXX")"
+            printf '%s\n' "$theme_line" > "$zshrc_temp"
+            /bin/cat "$zshrc_file" >> "$zshrc_temp"
+            /bin/mv "$zshrc_temp" "$zshrc_file"
+        fi
+
+        # Normalize a standard Oh My Zsh source line to one that works even
+        # when an existing .zshrc does not define $ZSH.
+        # shellcheck disable=SC2016
+        if /usr/bin/grep -Eq '^[[:space:]]*(source|\.)[[:space:]]+("?\$ZSH/oh-my-zsh\.sh"?|"?\$HOME/\.oh-my-zsh/oh-my-zsh\.sh"?)[[:space:]]*$' "$zshrc_file"; then
+            # shellcheck disable=SC2016
+            /usr/bin/sed -i '' -E 's|^[[:space:]]*(source|\.)[[:space:]]+("?\$ZSH/oh-my-zsh\.sh"?|"?\$HOME/\.oh-my-zsh/oh-my-zsh\.sh"?)[[:space:]]*$|source "$HOME/.oh-my-zsh/oh-my-zsh.sh"|' "$zshrc_file"
+        else
+            printf '\n%s\n' "$source_line" >> "$zshrc_file"
+        fi
+    fi
+
+    if [[ -f "${oh_my_zsh_dir}/oh-my-zsh.sh" ]]; then
+        ok "Oh My Zsh: ${oh_my_zsh_dir}"
+    else
+        missing "Oh My Zsh entry point: ${oh_my_zsh_dir}/oh-my-zsh.sh"
+    fi
+
+    if /usr/bin/grep -Fqx "$theme_line" "$zshrc_file" 2>/dev/null; then
+        ok "Oh My Zsh theme: Agnoster"
+    else
+        missing "Agnoster theme setting in ${zshrc_file}"
+    fi
+
+    if /usr/bin/grep -Fqx "$source_line" "$zshrc_file" 2>/dev/null; then
+        ok "Oh My Zsh enabled in ${zshrc_file}"
+    else
+        missing "Oh My Zsh source line in ${zshrc_file}"
+    fi
+}
+
 find_brew_command() {
     local command_name="$1"
     local brew_prefix
@@ -473,6 +565,34 @@ find_brew_command() {
         command -v "$command_name"
     else
         return 1
+    fi
+}
+
+find_codex_cli() {
+    if command -v codex >/dev/null 2>&1; then
+        command -v codex
+    elif [[ -x "${HOME}/.local/bin/codex" ]]; then
+        printf '%s\n' "${HOME}/.local/bin/codex"
+    else
+        return 1
+    fi
+}
+
+ensure_codex_cli() {
+    log "Checking Codex CLI"
+
+    local codex_cli
+    codex_cli="$(find_codex_cli || true)"
+    if [[ -z "$codex_cli" && "$MODE" == "install" ]]; then
+        log "Installing Codex CLI"
+        /bin/sh -c "$(/usr/bin/curl -fsSL https://chatgpt.com/codex/install.sh)"
+        codex_cli="$(find_codex_cli || true)"
+    fi
+
+    if [[ -n "$codex_cli" ]]; then
+        ok "Codex CLI: $($codex_cli --version | /usr/bin/head -n 1)"
+    else
+        missing "Codex CLI executable"
     fi
 }
 
@@ -538,11 +658,6 @@ ensure_github_auth() {
     fi
 
     ok "$($GH --version | /usr/bin/head -n 1)"
-
-    if [[ "$SKIP_GITHUB_AUTH" == "true" ]]; then
-        warn "GitHub authentication was skipped by request."
-        return
-    fi
 
     if ! "$GH" auth status --hostname github.com >/dev/null 2>&1; then
         if [[ "$MODE" == "check" ]]; then
@@ -887,10 +1002,13 @@ verify_workspace() {
     fi
 
     if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"terminal.integrated.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"debug.console.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"editor.inlineSuggest.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"editor.fontLigatures": "'"'"'ss11'"'"'"' "${REPO_DIR}/.vscode/settings.json"; then
-        ok "Geist Mono with coding ligatures (ss11)"
+        ok "VSCodium uses Geist Mono in the editor, terminal, debug console, and inline suggestions"
     else
-        missing "Geist Mono/ss11 editor settings"
+        missing "Complete Geist Mono VSCodium font settings"
     fi
 
     if /usr/bin/git -C "$REPO_DIR" check-ignore --no-index -q .cph-ng/setup-test.bin; then
@@ -924,10 +1042,10 @@ print_summary() {
         "clang-format" "$($BREW --prefix clang-format)/bin/clang-format" \
         "VSCodium" "${CODIUM:-missing}" \
         "Browser" "Orion" \
-        "Codex" "$(find_brew_command codex || printf 'missing')" \
+        "Codex CLI" "$(find_codex_cli || printf 'missing')" \
         "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
         "Dev tools" "CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
-        "Zsh" "autosuggestions + syntax highlighting" \
+        "Zsh" "Oh My Zsh + Agnoster + productivity plugins" \
         "Font" "Geist Mono (ss11 ligatures)"
 
     printf '\n%s\n' \
@@ -947,9 +1065,6 @@ main() {
                 ;;
             --no-open)
                 OPEN_EDITOR=false
-                ;;
-            --skip-github-auth)
-                SKIP_GITHUB_AUTH=true
                 ;;
             -h|--help)
                 usage
@@ -990,10 +1105,12 @@ main() {
     for item in "${CASKS[@]}"; do
         ensure_cask "$item"
     done
+    ensure_geist_mono_font
 
+    ensure_oh_my_zsh
     configure_zsh_plugins
+    ensure_codex_cli
     verify_developer_tools
-    ensure_github_auth
     ensure_extensions
 
     # Only inspect paths when their packages are available.
@@ -1001,6 +1118,9 @@ main() {
         sync_workspace_paths
         verify_workspace
     fi
+
+    # Keep the mandatory interactive GitHub login as the final setup action.
+    ensure_github_auth
 
     if ((FAILURES > 0)); then
         printf '\n\033[1;31mSetup found %d problem(s).\033[0m\n' "$FAILURES" >&2
