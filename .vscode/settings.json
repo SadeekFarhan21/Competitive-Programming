@@ -12,7 +12,7 @@
   "editor.accessibilitySupport": "off",
   "terminal.integrated.cursorStyle": "line",
   "terminal.integrated.cursorStyleInactive": "line",
-  "terminal.integrated.fontFamily": "'Geist Mono', Menlo, Monaco, 'Courier New', monospace",
+  "terminal.integrated.fontFamily": "'GeistMono Nerd Font Mono', Menlo, Monaco, 'Courier New', monospace",
   "terminal.integrated.fontSize": 14,
   "debug.console.fontFamily": "'Geist Mono', Menlo, Monaco, 'Courier New', monospace",
   "editor.inlineSuggest.fontFamily": "'Geist Mono', Menlo, Monaco, 'Courier New', monospace",
@@ -68,6 +68,8 @@
   /* CPH-NG: use Homebrew GCC (Apple Clang lacks <bits/stdc++.h>) */
   "cph-ng.languages.cppCompiler": "/opt/homebrew/opt/gcc/bin/g++-16",
   "cph-ng.languages.cppCompilerArgs": "-O2 -std=c++23 -Wall -DCPH -I/opt/homebrew/opt/boost/include",
+  "cph-ng.languages.cppObjcopy": "/opt/homebrew/opt/binutils/bin/gobjcopy",
+  "cph-ng.run.useWrapper": false,
 
   /* LaTeX */
   "latex-workshop.formatting.latex": "latexindent",

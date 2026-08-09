@@ -9,7 +9,7 @@
 #   2. Repository cloning and remote validation
 #   3. Git author identity and GitHub CLI authentication
 #   4. Homebrew plus development and command-line tools
-#   5. Oh My Zsh with the Agnoster theme and productivity plugins
+#   5. Oh My Zsh with Powerlevel10k and productivity plugins
 #   6. VSCodium, Orion Browser, Geist Mono, and workspace extensions
 #   7. Machine-specific compiler/include path synchronization
 #   8. A real GCC + PBDS compile/run test and configuration validation
@@ -41,6 +41,9 @@ readonly DEFAULT_REPO_DIR="${HOME}/Documents/Competitive-Programming"
 readonly GIT_AUTHOR_NAME="Farhan Sadeek"
 readonly GIT_AUTHOR_EMAIL="farhan@farhansadeek.com"
 readonly MINIMUM_FREE_DISK_MB=2048
+readonly CPH_NG_VERSION="0.7.11"
+readonly CPH_NG_SHA256="7b3d132c8c2c05bde1e2e3619b1abb4b7680895fd8a64ea4c64d03e7506e5a72"
+readonly CPH_NG_VSIX_URL="https://github.com/langningchen/cph-ng/releases/download/v${CPH_NG_VERSION}/cph-ng-${CPH_NG_VERSION}.vsix"
 
 REPO_DIR=""
 WORKSPACE_FILE=""
@@ -60,6 +63,7 @@ fi
 readonly -a FORMULAE=(
     gh
     gcc
+    binutils
     boost
     clang-format
     python
@@ -85,6 +89,7 @@ readonly -a CASKS=(
     vscodium
     orion
     font-geist-mono
+    font-geist-mono-nerd-font
 )
 
 # Package policy for this bootstrap. These casks must never be added to CASKS.
@@ -407,6 +412,13 @@ geist_mono_is_installed() {
             -print -quit 2>/dev/null | /usr/bin/grep -q .
 }
 
+geist_mono_nerd_font_is_installed() {
+    [[ -d "${HOME}/Library/Fonts" ]] && \
+        /usr/bin/find "${HOME}/Library/Fonts" -maxdepth 1 \
+            \( -name 'GeistMonoNerdFontMono-Regular.otf' -o -name 'GeistMonoNerdFontMono-Regular.ttf' \) \
+            -print -quit 2>/dev/null | /usr/bin/grep -q .
+}
+
 ensure_geist_mono_font() {
     log "Checking the macOS Geist Mono font installation"
 
@@ -419,6 +431,40 @@ ensure_geist_mono_font() {
         ok "Geist Mono Regular is installed in ${HOME}/Library/Fonts"
     else
         missing "Geist Mono Regular in ${HOME}/Library/Fonts"
+    fi
+
+    if ! geist_mono_nerd_font_is_installed && [[ "$MODE" == "install" ]]; then
+        warn "Homebrew has no usable GeistMono Nerd Font Mono Regular font; reinstalling the font cask."
+        NONINTERACTIVE=1 "$BREW" reinstall --cask font-geist-mono-nerd-font
+    fi
+
+    if geist_mono_nerd_font_is_installed; then
+        ok "GeistMono Nerd Font Mono Regular is installed in ${HOME}/Library/Fonts"
+    else
+        missing "GeistMono Nerd Font Mono Regular in ${HOME}/Library/Fonts"
+    fi
+}
+
+configure_macos_terminal_font() {
+    log "Checking macOS Terminal font for Powerlevel10k"
+
+    local terminal_profile
+    terminal_profile="$(/usr/bin/defaults read com.apple.Terminal 'Default Window Settings' 2>/dev/null || printf 'Basic')"
+
+    if [[ "$MODE" == "install" ]]; then
+        /usr/bin/osascript -e \
+            "tell application \"Terminal\" to set font name of settings set \"${terminal_profile}\" to \"GeistMonoNFM\"" \
+            >/dev/null
+    fi
+
+    local configured_font
+    configured_font="$(/usr/bin/osascript -e \
+        "tell application \"Terminal\" to get font name of settings set \"${terminal_profile}\"" \
+        2>/dev/null || true)"
+    if [[ "$configured_font" == "GeistMonoNFM" ]]; then
+        ok "Terminal profile '${terminal_profile}' uses GeistMono Nerd Font"
+    else
+        warn "Terminal must be quit and reopened before it can select the newly installed GeistMono Nerd Font (currently ${configured_font:-unknown})."
     fi
 }
 
@@ -490,14 +536,18 @@ configure_zsh_plugins() {
 }
 
 ensure_oh_my_zsh() {
-    log "Checking Oh My Zsh and the Agnoster theme"
+    log "Checking Oh My Zsh and Powerlevel10k"
 
     local oh_my_zsh_dir="${HOME}/.oh-my-zsh"
+    local powerlevel10k_dir="${HOME}/.oh-my-zsh/custom/themes/powerlevel10k"
+    local powerlevel10k_config="${HOME}/.p10k.zsh"
     local zshrc_file="${HOME}/.zshrc"
-    local theme_line='ZSH_THEME="agnoster"'
+    local theme_line='ZSH_THEME="powerlevel10k/powerlevel10k"'
     # Keep $HOME literal because this is the line written to .zshrc.
     # shellcheck disable=SC2016
     local source_line='source "$HOME/.oh-my-zsh/oh-my-zsh.sh"'
+    # shellcheck disable=SC2016
+    local config_source_line='[[ ! -f "$HOME/.p10k.zsh" ]] || source "$HOME/.p10k.zsh"'
     local zshrc_temp
 
     if [[ ! -f "${oh_my_zsh_dir}/oh-my-zsh.sh" ]]; then
@@ -510,13 +560,28 @@ ensure_oh_my_zsh() {
         fi
     fi
 
+    if [[ ! -f "${powerlevel10k_dir}/powerlevel10k.zsh-theme" ]]; then
+        if [[ "$MODE" == "check" ]]; then
+            missing "Powerlevel10k theme: ${powerlevel10k_dir}"
+        else
+            log "Installing Powerlevel10k"
+            /usr/bin/git clone --depth=1 \
+                https://github.com/romkatv/powerlevel10k.git \
+                "$powerlevel10k_dir"
+        fi
+    fi
+
+    if [[ "$MODE" == "install" && ! -f "$powerlevel10k_config" ]]; then
+        /bin/cp "${powerlevel10k_dir}/config/p10k-classic.zsh" "$powerlevel10k_config"
+    fi
+
     if [[ "$MODE" == "install" ]]; then
         /usr/bin/touch "$zshrc_file"
 
         # Normalize every active theme assignment so a later setting cannot
-        # override Agnoster before Oh My Zsh is loaded.
+        # override Powerlevel10k before Oh My Zsh is loaded.
         if /usr/bin/grep -Eq '^[[:space:]]*ZSH_THEME=' "$zshrc_file"; then
-            /usr/bin/sed -i '' -E 's/^[[:space:]]*ZSH_THEME=.*/ZSH_THEME="agnoster"/' "$zshrc_file"
+            /usr/bin/sed -i '' -E 's#^[[:space:]]*ZSH_THEME=.*#ZSH_THEME="powerlevel10k/powerlevel10k"#' "$zshrc_file"
         else
             zshrc_temp="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/cp-zshrc.XXXXXX")"
             printf '%s\n' "$theme_line" > "$zshrc_temp"
@@ -529,9 +594,13 @@ ensure_oh_my_zsh() {
         # shellcheck disable=SC2016
         if /usr/bin/grep -Eq '^[[:space:]]*(source|\.)[[:space:]]+("?\$ZSH/oh-my-zsh\.sh"?|"?\$HOME/\.oh-my-zsh/oh-my-zsh\.sh"?)[[:space:]]*$' "$zshrc_file"; then
             # shellcheck disable=SC2016
-            /usr/bin/sed -i '' -E 's|^[[:space:]]*(source|\.)[[:space:]]+("?\$ZSH/oh-my-zsh\.sh"?|"?\$HOME/\.oh-my-zsh/oh-my-zsh\.sh"?)[[:space:]]*$|source "$HOME/.oh-my-zsh/oh-my-zsh.sh"|' "$zshrc_file"
+            /usr/bin/sed -i '' -E 's#^[[:space:]]*(source|\.)[[:space:]]+("?\$ZSH/oh-my-zsh\.sh"?|"?\$HOME/\.oh-my-zsh/oh-my-zsh\.sh"?)[[:space:]]*$#source "$HOME/.oh-my-zsh/oh-my-zsh.sh"#' "$zshrc_file"
         else
             printf '\n%s\n' "$source_line" >> "$zshrc_file"
+        fi
+
+        if ! /usr/bin/grep -Fqx "$config_source_line" "$zshrc_file"; then
+            printf '%s\n' "$config_source_line" >> "$zshrc_file"
         fi
     fi
 
@@ -542,15 +611,60 @@ ensure_oh_my_zsh() {
     fi
 
     if /usr/bin/grep -Fqx "$theme_line" "$zshrc_file" 2>/dev/null; then
-        ok "Oh My Zsh theme: Agnoster"
+        ok "Oh My Zsh theme: Powerlevel10k"
     else
-        missing "Agnoster theme setting in ${zshrc_file}"
+        missing "Powerlevel10k theme setting in ${zshrc_file}"
+    fi
+
+    if [[ -f "${powerlevel10k_dir}/powerlevel10k.zsh-theme" && -f "$powerlevel10k_config" ]]; then
+        ok "Powerlevel10k theme and classic configuration"
+    else
+        missing "Powerlevel10k installation/configuration"
     fi
 
     if /usr/bin/grep -Fqx "$source_line" "$zshrc_file" 2>/dev/null; then
         ok "Oh My Zsh enabled in ${zshrc_file}"
     else
         missing "Oh My Zsh source line in ${zshrc_file}"
+    fi
+}
+
+configure_brew_command_policy() {
+    log "Checking local Homebrew command policy"
+
+    local zshrc_file="${HOME}/.zshrc"
+    local policy_marker="# Competitive Programming setup: block Brave Browser"
+
+    if [[ "$MODE" == "install" ]] && \
+        ! /usr/bin/grep -Fqx "$policy_marker" "$zshrc_file" 2>/dev/null; then
+        # The variables below are intentionally written literally to .zshrc.
+        # shellcheck disable=SC2016
+        printf '%s\n' \
+            '' \
+            "$policy_marker" \
+            'brew() {' \
+            '    local argument' \
+            '    local installing=false' \
+            '    local brave_requested=false' \
+            '' \
+            '    for argument in "$@"; do' \
+            '        [[ "$argument" == "install" || "$argument" == "reinstall" ]] && installing=true' \
+            '        [[ "$argument" == "brave-browser" ]] && brave_requested=true' \
+            '    done' \
+            '' \
+            '    if [[ "$installing" == "true" && "$brave_requested" == "true" ]]; then' \
+            '        print -u2 "Error: Installation of brave-browser is blocked on this Mac."' \
+            '        return 1' \
+            '    fi' \
+            '' \
+            '    command brew "$@"' \
+            '}' >> "$zshrc_file"
+    fi
+
+    if /usr/bin/grep -Fqx "$policy_marker" "$zshrc_file" 2>/dev/null; then
+        ok "brew install brave-browser is blocked in Zsh"
+    else
+        missing "Brave Browser Homebrew command policy in ${zshrc_file}"
     fi
 }
 
@@ -736,7 +850,9 @@ ensure_extensions() {
 
     local extension
     for extension in "${EXTENSIONS[@]}"; do
-        if printf '%s\n' "$installed_extensions" | /usr/bin/grep -Fiqx "$extension"; then
+        if [[ "$extension" == "langningchen.cph-ng" ]]; then
+            ensure_cph_ng_extension "$installed_extensions"
+        elif printf '%s\n' "$installed_extensions" | /usr/bin/grep -Fiqx "$extension"; then
             ok "VSCodium extension: $extension"
         elif [[ "$MODE" == "check" ]]; then
             missing "VSCodium extension: $extension"
@@ -746,6 +862,42 @@ ensure_extensions() {
             missing "VSCodium extension: $extension"
         fi
     done
+}
+
+ensure_cph_ng_extension() {
+    local installed_extensions="$1"
+    local extension="langningchen.cph-ng"
+
+    if printf '%s\n' "$installed_extensions" | /usr/bin/grep -Fiqx "$extension"; then
+        ok "VSCodium extension: ${extension} (official VSIX installed)"
+        return
+    fi
+
+    if [[ "$MODE" == "check" ]]; then
+        missing "VSCodium extension: $extension"
+        return
+    fi
+
+    TEMP_DIR="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/cp-setup.XXXXXX")"
+    local vsix_file="${TEMP_DIR}/cph-ng-${CPH_NG_VERSION}.vsix"
+    local actual_sha256
+
+    log "Installing CPH-NG ${CPH_NG_VERSION} from its official GitHub release"
+    /usr/bin/curl -fL --retry 3 --connect-timeout 15 \
+        "$CPH_NG_VSIX_URL" -o "$vsix_file"
+    actual_sha256="$(/usr/bin/shasum -a 256 "$vsix_file" | /usr/bin/awk '{ print $1 }')"
+    if [[ "$actual_sha256" != "$CPH_NG_SHA256" ]]; then
+        die "CPH-NG VSIX checksum mismatch; refusing to install it."
+    fi
+
+    if "$CODIUM" --install-extension "$vsix_file"; then
+        ok "VSCodium extension: ${extension} ${CPH_NG_VERSION} (checksum verified)"
+    else
+        missing "VSCodium extension installation: $extension"
+    fi
+
+    /bin/rm -rf -- "$TEMP_DIR"
+    TEMP_DIR=""
 }
 
 find_gpp() {
@@ -774,6 +926,7 @@ sync_workspace_paths() {
 
     local gcc_prefix
     local boost_prefix
+    local binutils_prefix
     local format_prefix
     local gpp
     local gcc_version
@@ -781,11 +934,13 @@ sync_workspace_paths() {
     local gcc_include_base
     local gcc_target_include
     local boost_include
+    local gobjcopy
     local clang_format
     local intellisense_mode
 
     gcc_prefix="$($BREW --prefix gcc)"
     boost_prefix="$($BREW --prefix boost)"
+    binutils_prefix="$($BREW --prefix binutils)"
     format_prefix="$($BREW --prefix clang-format)"
     gpp="$(find_gpp "$gcc_prefix" || true)"
 
@@ -796,6 +951,7 @@ sync_workspace_paths() {
     gcc_include_base="${gcc_prefix}/include/c++/${gcc_version}"
     gcc_target_include="${gcc_include_base}/${gcc_target}"
     boost_include="${boost_prefix}/include"
+    gobjcopy="${binutils_prefix}/bin/gobjcopy"
     clang_format="${format_prefix}/bin/clang-format"
 
     case "$(uname -m)" in
@@ -813,6 +969,7 @@ sync_workspace_paths() {
     [[ -x "$clang_format" ]] || die "clang-format was installed but is not executable at ${clang_format}."
     [[ -d "$gcc_include_base" ]] || die "GCC C++ headers were not found at ${gcc_include_base}."
     [[ -d "$boost_include" ]] || die "Boost headers were not found at ${boost_include}."
+    [[ -x "$gobjcopy" ]] || die "GNU objcopy was not found at ${gobjcopy}."
 
     if [[ ! -f "${REPO_DIR}/.clangd" ]]; then
         if [[ "$MODE" == "check" ]]; then
@@ -845,6 +1002,7 @@ sync_workspace_paths() {
         CP_GCC_INCLUDE_BASE="$gcc_include_base" \
         CP_GCC_TARGET_INCLUDE="$gcc_target_include" \
         CP_BOOST_INCLUDE="$boost_include" \
+        CP_GOBJCOPY="$gobjcopy" \
         CP_CLANG_FORMAT="$clang_format" \
         CP_INTELLISENSE_MODE="$intellisense_mode" \
         /usr/bin/perl -0pi -e '
@@ -853,6 +1011,7 @@ sync_workspace_paths() {
             s{/(?:opt/homebrew|usr/local)/opt/gcc/include/c\+\+/[0-9]+/backward}{$ENV{CP_GCC_INCLUDE_BASE}/backward}g;
             s{/(?:opt/homebrew|usr/local)/opt/gcc/include/c\+\+/[0-9]+}{$ENV{CP_GCC_INCLUDE_BASE}}g;
             s{/(?:opt/homebrew|usr/local)/opt/boost/include}{$ENV{CP_BOOST_INCLUDE}}g;
+            s{/(?:opt/homebrew|usr/local)/opt/binutils/bin/gobjcopy}{$ENV{CP_GOBJCOPY}}g;
             s{/(?:opt/homebrew|usr/local)/(?:Cellar/clang-format/[^/"\s]+|opt/clang-format)/bin/clang-format}{$ENV{CP_CLANG_FORMAT}}g;
             s{(?:C/C\+\+|C\+\+): g\+\+-[0-9]+ build active file}{C++: g++-$ENV{CP_GCC_VERSION} build active file}g;
             s{"C_Cpp\.default\.cppStandard"\s*:\s*"(?:c\+\+|gnu\+\+)[^"]+"}{"C_Cpp.default.cppStandard": "c++23"}g;
@@ -884,6 +1043,12 @@ sync_workspace_paths() {
         missing "Workspace references current Boost headers: $boost_include"
     fi
 
+    if printf '%s' "$all_config" | /usr/bin/grep -Fq "$gobjcopy"; then
+        ok "CPH-NG GNU objcopy path: $gobjcopy"
+    else
+        missing "CPH-NG references GNU objcopy: $gobjcopy"
+    fi
+
     if printf '%s' "$all_config" | /usr/bin/grep -Fq "$intellisense_mode"; then
         ok "IntelliSense architecture: $intellisense_mode"
     else
@@ -911,6 +1076,15 @@ sync_workspace_paths() {
     else
         missing "Default shell build task must use ${gpp}, identify GCC ${gcc_version}, and compile as C++23 with Boost"
     fi
+
+    local settings_file="${REPO_DIR}/.vscode/settings.json"
+    if /usr/bin/grep -Fq '"cph-ng.languages.cppCompiler": "'"$gpp"'"' "$settings_file" && \
+        /usr/bin/grep -Fq '"cph-ng.languages.cppCompilerArgs": "-O2 -std=c++23 -Wall -DCPH -I'"$boost_include"'"' "$settings_file" && \
+        /usr/bin/grep -Fq '"cph-ng.languages.cppObjcopy": "'"$gobjcopy"'"' "$settings_file"; then
+        ok "CPH-NG uses Homebrew GCC, C++23, Boost, and GNU objcopy"
+    else
+        missing "Complete CPH-NG C++ toolchain settings"
+    fi
 }
 
 verify_workspace() {
@@ -933,20 +1107,24 @@ verify_workspace() {
 
     printf '%s\n' \
         '#include <bits/stdc++.h>' \
+        '#include <boost/container/flat_set.hpp>' \
         '#include <ext/pb_ds/assoc_container.hpp>' \
         '#include <ext/pb_ds/tree_policy.hpp>' \
         'using namespace __gnu_pbds;' \
         'static_assert(__cplusplus >= 202100L, "C++23 mode is required");' \
         'int main() {' \
         '    tree<int, null_type, std::less<int>, rb_tree_tag, tree_order_statistics_node_update> values;' \
+        '    boost::container::flat_set<int> boosted_values;' \
         '    values.insert(7);' \
-        '    return values.order_of_key(8) == 1 ? 0 : 1;' \
+        '    boosted_values.insert(11);' \
+        '    return values.order_of_key(8) == 1 && boosted_values.contains(11) ? 0 : 1;' \
         '}' > "$source_file"
 
-    if "$gpp" -std=c++23 -I"${boost_prefix}/include" "$source_file" -o "$output_file" && "$output_file"; then
-        ok "GCC C++23, bits/stdc++.h, and PBDS"
+    if "$gpp" -O2 -std=c++23 -Wall -DCPH -I"${boost_prefix}/include" \
+        "$source_file" -o "$output_file" && "$output_file"; then
+        ok "GCC C++23, bits/stdc++.h, Boost, and PBDS"
     else
-        missing "GCC/PBDS smoke test"
+        missing "GCC/Boost/PBDS smoke test"
     fi
 
     if "$($BREW --prefix clang-format)/bin/clang-format" \
@@ -1002,13 +1180,13 @@ verify_workspace() {
     fi
 
     if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
-        /usr/bin/grep -Fq '"terminal.integrated.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"terminal.integrated.fontFamily": "'"'"'GeistMono Nerd Font Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"debug.console.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"editor.inlineSuggest.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"editor.fontLigatures": "'"'"'ss11'"'"'"' "${REPO_DIR}/.vscode/settings.json"; then
-        ok "VSCodium uses Geist Mono in the editor, terminal, debug console, and inline suggestions"
+        ok "VSCodium uses Geist Mono for editing and GeistMono Nerd Font Mono in the terminal"
     else
-        missing "Complete Geist Mono VSCodium font settings"
+        missing "Complete Geist Mono and terminal Nerd Font VSCodium settings"
     fi
 
     if /usr/bin/git -C "$REPO_DIR" check-ignore --no-index -q .cph-ng/setup-test.bin; then
@@ -1045,7 +1223,7 @@ print_summary() {
         "Codex CLI" "$(find_codex_cli || printf 'missing')" \
         "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
         "Dev tools" "CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
-        "Zsh" "Oh My Zsh + Agnoster + productivity plugins" \
+        "Zsh" "Oh My Zsh + Powerlevel10k + productivity plugins" \
         "Font" "Geist Mono (ss11 ligatures)"
 
     printf '\n%s\n' \
@@ -1106,8 +1284,10 @@ main() {
         ensure_cask "$item"
     done
     ensure_geist_mono_font
+    configure_macos_terminal_font
 
     ensure_oh_my_zsh
+    configure_brew_command_policy
     configure_zsh_plugins
     ensure_codex_cli
     verify_developer_tools
