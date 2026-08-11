@@ -65,3 +65,20 @@ Useful options:
 - LaTeX is not installed automatically because a TeX distribution is several gigabytes.
 
 The bootstrap supports Apple Silicon and Intel Macs and is safe to run repeatedly.
+
+## WakaTime heartbeat
+
+Send a heartbeat for this repository:
+
+```sh
+make heartbeat
+```
+
+To associate the heartbeat with a specific file and mark it as a write:
+
+```sh
+make heartbeat FILE=Planets_and_Kingdoms.cpp
+```
+
+The command uses `wakatime-cli` from `PATH`, or the CLI installed under
+`~/.wakatime` by the WakaTime VS Code extension.

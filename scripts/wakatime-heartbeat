@@ -1,0 +1,50 @@
+#!/bin/sh
+
+set -eu
+
+project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+project_name=$(basename -- "$project_root")
+
+if command -v wakatime-cli >/dev/null 2>&1; then
+    wakatime_cli=$(command -v wakatime-cli)
+elif [ -x "$HOME/.wakatime/wakatime-cli-darwin-arm64" ]; then
+    wakatime_cli="$HOME/.wakatime/wakatime-cli-darwin-arm64"
+elif [ -x "$HOME/.wakatime/wakatime-cli-linux-amd64" ]; then
+    wakatime_cli="$HOME/.wakatime/wakatime-cli-linux-amd64"
+else
+    echo "WakaTime CLI not found. Install WakaTime or add wakatime-cli to PATH." >&2
+    exit 1
+fi
+
+if [ "$#" -gt 1 ]; then
+    echo "Usage: $0 [file]" >&2
+    exit 2
+fi
+
+if [ "$#" -eq 1 ]; then
+    case $1 in
+        /*) entity=$1 ;;
+        *) entity="$project_root/$1" ;;
+    esac
+
+    if [ ! -f "$entity" ]; then
+        echo "Cannot send heartbeat: file does not exist: $entity" >&2
+        exit 2
+    fi
+
+    "$wakatime_cli" \
+        --entity "$entity" \
+        --project "$project_name" \
+        --category coding \
+        --write \
+        --plugin "competitive-programming-heartbeat/1.0.0"
+else
+    "$wakatime_cli" \
+        --entity "$project_name" \
+        --entity-type app \
+        --project "$project_name" \
+        --category coding \
+        --plugin "competitive-programming-heartbeat/1.0.0"
+fi
+
+echo "WakaTime heartbeat sent for ${entity:-$project_name}."
