@@ -10,7 +10,7 @@
 #   3. Git author identity and GitHub CLI authentication
 #   4. Homebrew plus development and command-line tools
 #   5. Oh My Zsh with Powerlevel10k and productivity plugins
-#   6. VSCodium, Orion Browser, Geist Mono, and workspace extensions
+#   6. VSCodium, Orion Browser, GeistMono Nerd Font, and workspace extensions
 #   7. Machine-specific compiler/include path synchronization
 #   8. A real GCC + PBDS compile/run test and configuration validation
 #   9. Opening the correct VSCodium workspace
@@ -88,7 +88,6 @@ readonly -a FORMULAE=(
 readonly -a CASKS=(
     vscodium
     orion
-    font-geist-mono
     font-geist-mono-nerd-font
 )
 
@@ -405,13 +404,6 @@ ensure_cask() {
     fi
 }
 
-geist_mono_is_installed() {
-    [[ -d "${HOME}/Library/Fonts" ]] && \
-        /usr/bin/find "${HOME}/Library/Fonts" -maxdepth 1 \
-            \( -name 'GeistMono-Regular.otf' -o -name 'GeistMono-Regular.ttf' \) \
-            -print -quit 2>/dev/null | /usr/bin/grep -q .
-}
-
 geist_mono_nerd_font_is_installed() {
     [[ -d "${HOME}/Library/Fonts" ]] && \
         /usr/bin/find "${HOME}/Library/Fonts" -maxdepth 1 \
@@ -420,28 +412,17 @@ geist_mono_nerd_font_is_installed() {
 }
 
 ensure_geist_mono_font() {
-    log "Checking the macOS Geist Mono font installation"
-
-    if ! geist_mono_is_installed && [[ "$MODE" == "install" ]]; then
-        warn "Homebrew has no usable Geist Mono Regular font; reinstalling the font cask."
-        NONINTERACTIVE=1 "$BREW" reinstall --cask font-geist-mono
-    fi
-
-    if geist_mono_is_installed; then
-        ok "Geist Mono Regular is installed in ${HOME}/Library/Fonts"
-    else
-        missing "Geist Mono Regular in ${HOME}/Library/Fonts"
-    fi
+    log "Checking the macOS GeistMono Nerd Font installation"
 
     if ! geist_mono_nerd_font_is_installed && [[ "$MODE" == "install" ]]; then
-        warn "Homebrew has no usable GeistMono Nerd Font Mono Regular font; reinstalling the font cask."
+        warn "Homebrew has no usable GeistMono Nerd Font Mono; reinstalling the font cask."
         NONINTERACTIVE=1 "$BREW" reinstall --cask font-geist-mono-nerd-font
     fi
 
     if geist_mono_nerd_font_is_installed; then
-        ok "GeistMono Nerd Font Mono Regular is installed in ${HOME}/Library/Fonts"
+        ok "GeistMono Nerd Font Mono is installed in ${HOME}/Library/Fonts"
     else
-        missing "GeistMono Nerd Font Mono Regular in ${HOME}/Library/Fonts"
+        missing "GeistMono Nerd Font Mono in ${HOME}/Library/Fonts"
     fi
 }
 
@@ -1087,6 +1068,41 @@ sync_workspace_paths() {
     fi
 }
 
+configure_gcc_command() {
+    log "Configuring the default g++ command for CPH-NG"
+
+    local gcc_prefix
+    local gpp
+    local local_bin="${HOME}/bin"
+    local gpp_link="${local_bin}/g++"
+    local path_line='export PATH="$HOME/bin:$PATH"'
+
+    gcc_prefix="$($BREW --prefix gcc)"
+    gpp="$(find_gpp "$gcc_prefix" || true)"
+    [[ -n "$gpp" ]] || die "Could not find Homebrew g++ for the default command shim."
+
+    if [[ -e "$gpp_link" && ! -L "$gpp_link" ]]; then
+        die "Cannot configure ${gpp_link}: a non-symlink already exists there."
+    fi
+
+    if [[ "$MODE" == "install" ]]; then
+        /bin/mkdir -p "$local_bin"
+        /bin/ln -sfn "$gpp" "$gpp_link"
+
+        local zprofile_file="${HOME}/.zprofile"
+        /usr/bin/touch "$zprofile_file"
+        if ! /usr/bin/grep -Fqx "$path_line" "$zprofile_file"; then
+            printf '\n%s\n' "$path_line" >> "$zprofile_file"
+        fi
+    fi
+
+    if [[ -L "$gpp_link" && "$(/usr/bin/readlink "$gpp_link")" == "$gpp" ]]; then
+        ok "Default g++ command: ${gpp_link} -> ${gpp}"
+    else
+        missing "Default g++ command shim: ${gpp_link} -> ${gpp}"
+    fi
+}
+
 verify_workspace() {
     log "Running C++ toolchain smoke test"
 
@@ -1179,14 +1195,14 @@ verify_workspace() {
         missing "ShellCheck validation for ${REPO_DIR}/setup.sh"
     fi
 
-    if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+    if /usr/bin/grep -Fq '"editor.fontFamily": "'"'"'GeistMono Nerd Font Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"terminal.integrated.fontFamily": "'"'"'GeistMono Nerd Font Mono' "${REPO_DIR}/.vscode/settings.json" && \
-        /usr/bin/grep -Fq '"debug.console.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
-        /usr/bin/grep -Fq '"editor.inlineSuggest.fontFamily": "'"'"'Geist Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"debug.console.fontFamily": "'"'"'GeistMono Nerd Font Mono' "${REPO_DIR}/.vscode/settings.json" && \
+        /usr/bin/grep -Fq '"editor.inlineSuggest.fontFamily": "'"'"'GeistMono Nerd Font Mono' "${REPO_DIR}/.vscode/settings.json" && \
         /usr/bin/grep -Fq '"editor.fontLigatures": "'"'"'ss11'"'"'"' "${REPO_DIR}/.vscode/settings.json"; then
-        ok "VSCodium uses Geist Mono for editing and GeistMono Nerd Font Mono in the terminal"
+        ok "VSCodium uses GeistMono Nerd Font Mono throughout"
     else
-        missing "Complete Geist Mono and terminal Nerd Font VSCodium settings"
+        missing "Complete GeistMono Nerd Font VSCodium settings"
     fi
 
     if /usr/bin/git -C "$REPO_DIR" check-ignore --no-index -q .cph-ng/setup-test.bin; then
@@ -1224,7 +1240,7 @@ print_summary() {
         "CLI tools" "ripgrep, fzf, jq, tree, shellcheck" \
         "Dev tools" "CMake, Ninja, Git LFS, Vim, tmux, uv, fd, bat, eza" \
         "Zsh" "Oh My Zsh + Powerlevel10k + productivity plugins" \
-        "Font" "Geist Mono (ss11 ligatures)"
+        "Font" "GeistMono Nerd Font Mono (ss11 ligatures)"
 
     printf '\n%s\n' \
         "Manual, security-sensitive follow-up:" \
@@ -1295,6 +1311,7 @@ main() {
 
     # Only inspect paths when their packages are available.
     if "$BREW" list --formula gcc boost clang-format >/dev/null 2>&1; then
+        configure_gcc_command
         sync_workspace_paths
         verify_workspace
     fi
@@ -1317,7 +1334,7 @@ main() {
 
     log "Setup complete"
     printf '%s\n' \
-        "The compiler, Boost, clangd, clang-format, Geist Mono, snippets," \
+        "The compiler, Boost, clangd, clang-format, GeistMono Nerd Font, snippets," \
         "VSCodium, and workspace extensions are ready."
     if [[ "$OPEN_EDITOR" == "true" ]]; then
         log "Opening the competitive-programming workspace"
